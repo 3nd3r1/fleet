@@ -5,24 +5,23 @@ servers and the projects running on them.
 
 ## Status
 
-The first version of the map runs on mock data. Not deployed yet, and there's
-no real data source yet. Repo: github.com/3nd3r1/fleet (private).
+The map runs on real Coolify data (statuses only). No CPU/RAM yet, that comes
+with Beszel. Not deployed yet. Repo: github.com/3nd3r1/fleet (private).
 
 Decided so far:
 
 - Project name `fleet`. Page title is `eros.ender.fi`.
 - Stack: Svelte 5 + Vite + Tailwind v4 for the page. A Bun server
   (`server/index.ts`) in the same container serves `dist/` and `/api/*`, and
-  will later proxy Coolify/Beszel. TypeScript is pinned to 6.x because
+  proxies Coolify (Beszel later). TypeScript is pinned to 6.x because
   typescript-eslint doesn't support 7 yet.
 - Coolify is not its own node. It's what runs eros, and eros's role says so.
 
 Still open:
 
-- Which projects really run on eros. The mock uses the list below. Repos with
-  Coolify webhooks also include vebbi-homepage, timescaledb-tune-ui, viiteri,
-  neko-homepage and mantray-homepage. Once real data comes from Coolify, this
-  sorts itself out.
+- Beszel for metrics: eros CPU/RAM, and agents on bean, jane, dragon and graff
+  so the outposts get a real status. Until then they show "no signal".
+- Per-project descriptions (`server/projects.ts`).
 
 ## Design
 
@@ -117,7 +116,14 @@ Switching to real data: add `/api/fleet` to the server returning the
 
 DNS is on Cloudflare. ender.fi itself is my personal site.
 
-## Projects on eros (to be confirmed)
+## Projects on eros
+
+Comes from Coolify now. Resources are grouped by name (`bloglist-frontend` +
+`bloglist-backend` → `bloglist`, see `projectName` in `server/fleet.ts`).
+Hide one from the public page with `HIDDEN` in `server/projects.ts`. The list
+below is what the mock uses in dev.
+
+Mock list:
 
 ender-page, timescaledb-tune, booru, datakolo, bloglist, millonkutsunnat,
 protaskinate, thrivy, ender-drive.
@@ -126,18 +132,33 @@ protaskinate, thrivy, ender-drive.
 
 - Graph with eros in the center, the projects connected to it, and my other
   machines around it.
-- Every node has a status: up, degraded or down.
+- Every node has a status: up, degraded or down. `unknown` ("no signal") is
+  for nodes with no data source yet.
 - Hovering or tapping a node shows what it is and some metrics (CPU, RAM).
 - It should feel alive, with motion and changing values. Not a static diagram.
 - Works on a phone.
 
 ## Data
 
-- Start with mock data in one file that changes over time, so the visuals can
-  be built first.
-- Later, real data comes from the Coolify API (servers, apps, status) and Beszel
-  (server metrics), through a small backend that caches every 15-30 seconds.
-- Keep data loading in one place so switching from mock to real is a small change.
+- `src/lib/fleet.svelte.ts` is the one place the page loads data. Production
+  builds poll `/api/fleet` every 15 s. Dev uses `src/lib/mock.ts`, which
+  changes every 2 s. `VITE_FLEET_SOURCE=api|mock` overrides.
+- `/api/fleet` (`server/fleet.ts`) asks Coolify for servers, applications,
+  services and databases, cached for 20 s and shared between all visitors. If
+  Coolify fails, the last good result is served. With nothing cached it
+  returns 502 without upstream details.
+- `server/coolify.ts` parses responses with Zod schemas that whitelist the
+  fields fleet uses, so IPs, ports and versions are dropped at the edge.
+  Descriptions that look like an IP, port or version are dropped too.
+- Coolify statuses: `running:*` → up (`running:unhealthy` → degraded),
+  `restarting`/`starting`/`degraded` → degraded, anything else → down. A
+  project takes the worst status of its resources.
+- CPU/RAM are `null` until Beszel is added. The page shows "—".
+- Env (server only, never `VITE_`-prefixed): `COOLIFY_URL`, `COOLIFY_TOKEN`
+  (read-only token). Locally in `.env`, which Bun loads. In production, set
+  them as runtime env vars on the Coolify app (not build variables).
+- To run locally against Coolify: `bun run dev:server` and
+  `VITE_FLEET_SOURCE=api bun run dev`.
 
 ## Conventions (carried over from nextjs-template)
 
@@ -174,4 +195,5 @@ that changes over time`.
 - The page is public. Never show IPs, ports or software versions, not even in
   mock data.
 - The Coolify API token must never reach the browser. Only the backend talks to Coolify.
+- Never read or print `.env`. Test through the running server instead.
 - It's deployed on Coolify on eros, so keep it light.
