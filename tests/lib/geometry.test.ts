@@ -1,30 +1,45 @@
 import { describe, expect, it } from "vitest";
 
 import {
-    INNER_SLOTS,
     ORBIT_RADII,
     asteroidPath,
     layoutOrbit,
     packet,
     polar,
+    ringSizes,
     speedFactor,
 } from "@/lib/geometry";
 
+describe("ringSizes", () => {
+    it("places every ship", () => {
+        for (const count of [0, 1, 5, 10, 17, 30]) {
+            expect(ringSizes(count).reduce((a, b) => a + b, 0)).toBe(count);
+        }
+    });
+
+    it("gives bigger rings more ships", () => {
+        const [inner, middle, outer] = ringSizes(17);
+        expect(inner).toBeLessThanOrEqual(middle);
+        expect(middle).toBeLessThanOrEqual(outer);
+    });
+});
+
 describe("layoutOrbit", () => {
-    it("puts the first ships on the inner ring and the rest outside", () => {
-        expect(layoutOrbit(0, 10).radius).toBe(ORBIT_RADII[0]);
-        expect(layoutOrbit(INNER_SLOTS, 10).radius).toBe(ORBIT_RADII[1]);
+    it("fills the inner ring first", () => {
+        expect(layoutOrbit(0, 17).radius).toBe(ORBIT_RADII[0]);
+        expect(layoutOrbit(16, 17).radius).toBe(ORBIT_RADII.at(-1));
     });
 
     it("spaces ships on a ring evenly", () => {
-        const a = layoutOrbit(0, 10).phase;
-        const b = layoutOrbit(1, 10).phase;
-        expect(b - a).toBeCloseTo((Math.PI * 2) / INNER_SLOTS);
+        const [inner] = ringSizes(17);
+        const a = layoutOrbit(0, 17).phase;
+        const b = layoutOrbit(1, 17).phase;
+        expect(b - a).toBeCloseTo((Math.PI * 2) / inner);
     });
 
-    it("moves the inner ring faster", () => {
-        expect(layoutOrbit(0, 10).speed).toBeGreaterThan(
-            layoutOrbit(INNER_SLOTS, 10).speed
+    it("moves inner rings faster", () => {
+        expect(layoutOrbit(0, 17).speed).toBeGreaterThan(
+            layoutOrbit(16, 17).speed
         );
     });
 });

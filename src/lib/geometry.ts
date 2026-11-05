@@ -3,11 +3,10 @@ import type { Status } from "@/validators/fleet";
 const TAU = Math.PI * 2;
 
 export const EROS_RADIUS = 54;
-export const ORBIT_RADII = [170, 275] as const;
+export const ORBIT_RADII = [150, 228, 310] as const;
 export const OUTPOST_RADIUS = 420;
-export const INNER_SLOTS = 4;
 // Seconds per full orbit, inner ring first.
-const PERIODS = [160, 280] as const;
+const PERIODS = [150, 230, 330] as const;
 
 export interface Point {
     x: number;
@@ -24,23 +23,42 @@ export function polar(radius: number, angle: number): Point {
     return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
 }
 
+// How many ships each ring gets. Rings share ships by circumference, so the
+// spacing between ships is about the same on every ring.
+export function ringSizes(count: number): number[] {
+    const total = ORBIT_RADII.reduce((a, b) => a + b, 0);
+    const sizes = ORBIT_RADII.map((r) => Math.floor((count * r) / total));
+    let left = count - sizes.reduce((a, b) => a + b, 0);
+    for (
+        let i = sizes.length - 1;
+        left > 0;
+        i = (i + sizes.length - 1) % sizes.length
+    ) {
+        sizes[i]++;
+        left--;
+    }
+    return sizes;
+}
+
 export function layoutOrbit(index: number, count: number): Orbit {
-    const ring = index < INNER_SLOTS ? 0 : 1;
-    const slots =
-        ring === 0
-            ? Math.min(count, INNER_SLOTS)
-            : Math.max(count - INNER_SLOTS, 1);
-    const slot = ring === 0 ? index : index - INNER_SLOTS;
+    const sizes = ringSizes(count);
+    let ring = 0;
+    let slot = index;
+    while (ring < sizes.length - 1 && slot >= sizes[ring]) {
+        slot -= sizes[ring];
+        ring++;
+    }
     return {
         radius: ORBIT_RADII[ring],
-        phase: (TAU * slot) / slots + ring * 0.5,
+        phase: (TAU * slot) / Math.max(sizes[ring], 1) + ring * 0.45,
         speed: TAU / PERIODS[ring],
     };
 }
 
 // Degraded ships slow down, down ships stop.
 export function speedFactor(status: Status): number {
-    return status === "up" ? 1 : status === "degraded" ? 0.3 : 0;
+    if (status === "down") return 0;
+    return status === "degraded" ? 0.3 : 1;
 }
 
 const OUTPOST_ANGLES = [-0.72, 0.62, 2.5, 3.8];
