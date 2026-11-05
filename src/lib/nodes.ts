@@ -29,6 +29,15 @@ export function formatPercent(value: number | null, digits = 0): string {
     return value === null ? "—" : `${value.toFixed(digits)}%`;
 }
 
+export function formatUptime(seconds: number): string {
+    const days = Math.floor(seconds / 86_400);
+    const hours = Math.floor((seconds % 86_400) / 3_600);
+    const minutes = Math.floor((seconds % 3_600) / 60);
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+}
+
 export function countStatuses(fleet: Fleet): Record<Status, number> {
     const counts: Record<Status, number> = {
         up: 0,

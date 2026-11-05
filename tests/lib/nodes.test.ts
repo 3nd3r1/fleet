@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { createMock } from "@/lib/mock";
-import { countStatuses, statusColor, statusLabel } from "@/lib/nodes";
+import {
+    countStatuses,
+    formatUptime,
+    statusColor,
+    statusLabel,
+} from "@/lib/nodes";
 
 describe("statusLabel and statusColor", () => {
     it("shows a down machine as offline in a dim color", () => {
@@ -32,5 +37,13 @@ describe("unknown status", () => {
         const node = { kind: "machine", status: "unknown" } as const;
         expect(statusLabel(node)).toBe("no signal");
         expect(statusColor(node)).toBe("var(--color-dim)");
+    });
+});
+
+describe("formatUptime", () => {
+    it("picks the two biggest units", () => {
+        expect(formatUptime(1_689_275)).toBe("19d 13h");
+        expect(formatUptime(3_700)).toBe("1h 1m");
+        expect(formatUptime(120)).toBe("2m");
     });
 });

@@ -1,7 +1,12 @@
 <script lang="ts">
     import type { FleetNode } from "@/validators/fleet";
 
-    import { formatPercent, statusColor, statusLabel } from "@/lib/nodes";
+    import {
+        formatPercent,
+        formatUptime,
+        statusColor,
+        statusLabel,
+    } from "@/lib/nodes";
 
     import Sparkline from "@/components/Sparkline.svelte";
 
@@ -54,6 +59,12 @@
     {/if}
 
     <dl class="mt-6 space-y-4">
+        {#if node.uptime !== null}
+            <div class="flex justify-between text-xs">
+                <dt class="tracking-[0.2em] text-dim uppercase">uptime</dt>
+                <dd class="tabular-nums">{formatUptime(node.uptime)}</dd>
+            </div>
+        {/if}
         {#each metrics as m (m.label)}
             <div>
                 <div class="flex justify-between text-xs">
