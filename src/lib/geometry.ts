@@ -2,7 +2,7 @@ import type { Status } from "@/validators/fleet";
 
 const TAU = Math.PI * 2;
 
-export const EROS_RADIUS = 54;
+export const CORE_RADIUS = 54;
 export const ORBIT_RADII = [150, 228, 310] as const;
 export const OUTPOST_RADIUS = 420;
 // Seconds per full orbit, inner ring first.
@@ -73,9 +73,9 @@ export function packet(t: number, period: number, offset: number): number {
     return (((t / period + offset) % 1) + 1) % 1;
 }
 
-// Eros is a peanut-shaped asteroid: two lobes with a waist, plus a couple of
+// The core is drawn as a peanut-shaped asteroid (like Eros): two lobes with a waist, plus a couple of
 // slow bumps so it doesn't look machine-made.
-export function asteroidPath(radius = EROS_RADIUS, points = 64): string {
+export function asteroidPath(radius = CORE_RADIUS, points = 64): string {
     const coords = Array.from({ length: points }, (_, i) => {
         const a = (TAU * i) / points;
         const r =

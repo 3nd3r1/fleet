@@ -4,7 +4,7 @@
     import type { Fleet } from "@/validators/fleet";
 
     import {
-        EROS_RADIUS,
+        CORE_RADIUS,
         ORBIT_RADII,
         OUTPOST_RADIUS,
         asteroidPath,
@@ -79,7 +79,7 @@
     const outposts = $derived(
         fleet.machines.map((node, i) => {
             const angle = outpostAngle(i, fleet.machines.length, t);
-            const from = polar(EROS_RADIUS + 22, angle);
+            const from = polar(CORE_RADIUS + 22, angle);
             const to = polar(OUTPOST_RADIUS - 18, angle);
             const along = (p: number) => ({
                 x: from.x + (to.x - from.x) * p,
@@ -101,7 +101,7 @@
     );
 
     const activeShip = $derived(ships.find((s) => s.node.id === activeId));
-    // Eros turns one degree per second.
+    // The core turns one degree per second.
     const rotation = $derived(t);
 
     function handlers(id: string) {
@@ -183,11 +183,11 @@
     <g
         role="button"
         tabindex="0"
-        aria-label="eros, {fleet.core.status}"
+        aria-label="{fleet.core.name}, {fleet.core.status}"
         class="node"
         {...handlers(fleet.core.id)}
     >
-        <circle r={EROS_RADIUS + 16} fill="transparent" />
+        <circle r={CORE_RADIUS + 16} fill="transparent" />
         <g transform="rotate({rotation})">
             <path
                 d={ASTEROID}
@@ -212,14 +212,14 @@
             <circle cx="36" cy="-6" r="2" fill="var(--color-dim)" />
         </g>
         <text
-            y={EROS_RADIUS + 34}
+            y={CORE_RADIUS + 34}
             text-anchor="middle"
-            class={["label", "core", activeId === "eros" && "active"]}
-            >EROS</text
+            class={["label", "core", activeId === fleet.core.id && "active"]}
+            >{fleet.core.name.toUpperCase()}</text
         >
         {#if activeId === fleet.core.id}
             <path
-                d={bracketPath(EROS_RADIUS + 14, 10)}
+                d={bracketPath(CORE_RADIUS + 14, 10)}
                 fill="none"
                 stroke="var(--color-ink)"
             />

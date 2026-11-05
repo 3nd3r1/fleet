@@ -7,10 +7,13 @@
 
     interface Props {
         node: FleetNode;
+        coreName: string;
         history: number[];
     }
 
-    let { node, history }: Props = $props();
+    let { node, coreName, history }: Props = $props();
+
+    const host = $derived(node.url ? new URL(node.url).host : null);
 
     const down = $derived(node.status === "down");
     const hasMetrics = $derived(node.cpu !== null || node.ram !== null);
@@ -36,8 +39,19 @@
     </div>
     <h2 class="mt-2 text-2xl">{node.name}</h2>
     <p class="mt-2 min-h-10 text-sm leading-relaxed text-dim">
-        {node.description || "Deployed on eros."}
+        {node.description ||
+            (node.kind === "project" ? `Deployed on ${coreName}.` : "")}
     </p>
+    {#if node.url && host}
+        <a
+            href={node.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-3 inline-flex items-center gap-1.5 text-sm text-ink underline decoration-faint underline-offset-4 transition-colors hover:decoration-ink"
+        >
+            {host}<span aria-hidden="true" class="text-dim">↗</span>
+        </a>
+    {/if}
 
     <dl class="mt-6 space-y-4">
         {#each metrics as m (m.label)}
