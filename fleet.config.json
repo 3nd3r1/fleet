@@ -1,0 +1,52 @@
+{
+    "$schema": "./fleet.schema.json",
+    "site": {
+        "title": "eros.ender.fi",
+        "description": "A live map of my servers and the projects running on them."
+    },
+    "core": {
+        "name": "eros",
+        "role": "vps · coolify",
+        "description": "Runs Coolify and every project orbiting it, this page included."
+    },
+    "projects": {
+        "fleet": { "description": "This page.", "url": false },
+        "bloglist": {
+            "description": "A simple blog app from the Fullstack-HY 2023 course."
+        },
+        "datakolo": {
+            "description": "Headless CMS for creating and managing content."
+        },
+        "ender-homepage": { "description": "My personal homepage." },
+        "millonkutsunnat": {
+            "description": "Check your draft dates in Finland, quickly."
+        },
+        "protaskinate": {
+            "description": "Project management that turns procrastination into productivity."
+        },
+        "tarkistus": {
+            "description": "Know before you approve: trust briefs for applications in minutes."
+        },
+        "thrivy": {
+            "description": "Helps talents find workplaces where they can truly thrive."
+        },
+        "timescaledb-tune": {
+            "description": "Enter your system specs, get an optimized TimescaleDB config."
+        },
+        "viiteri": {
+            "description": "BibTeX reference manager for LaTeX documents."
+        },
+        "nextcloud": { "description": "Personal cloud drive.", "url": false },
+        "beszel": { "description": "Server monitoring." }
+    },
+    "machines": [
+        {
+            "id": "bean",
+            "role": "laptop",
+            "description": "NixOS with Hyprland. Most deploys to eros start here."
+        },
+        { "id": "jane", "role": "phone", "description": "Pixel 10." },
+        { "id": "dragon", "role": "desktop", "description": "Desktop." },
+        { "id": "graff", "role": "work mac", "description": "Work machine." }
+    ]
+}

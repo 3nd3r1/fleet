@@ -1,0 +1,24 @@
+{
+    "$schema": "./fleet.schema.json",
+    "site": {
+        "title": "my-server.example.com",
+        "description": "A live map of my servers and the projects running on them."
+    },
+    "core": {
+        "name": "mothership",
+        "role": "vps · coolify",
+        "description": "Runs Coolify and every project orbiting it."
+    },
+    "grouping": {
+        "aliases": { "my-old-app-name": "blog" }
+    },
+    "projects": {
+        "blog": { "name": "Blog", "description": "Where I write things." },
+        "api-gateway": { "hidden": true },
+        "drive": { "url": false },
+        "shop": { "url": "https://shop.example.com" }
+    },
+    "machines": [
+        { "id": "laptop", "role": "laptop", "description": "Daily driver." }
+    ]
+}
