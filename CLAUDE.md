@@ -47,7 +47,14 @@ no decorative filler. Motion and changing numbers are what make it feel alive.
   is the main way to pick a node).
 - Phone: header, square map, then panel, log and roster stacked. Ship labels
   only show for the active ship, and glyphs are scaled up.
-- Respects `prefers-reduced-motion` (no orbiting, twinkling or blinking).
+- Intro, first visit only: boot lines type out while data loads
+  ("establishing ansible link", "contacting <core>", "<n> ships · <m>
+  outposts" with real counts), then the overlay fades and the ships launch
+  from the core into orbit. No fixed delay beyond about a second. Seen flag
+  is `fleet:intro-seen` in localStorage (not a cookie). `?intro` replays it.
+  Logic in `src/lib/intro.ts`, overlay in `Boot.svelte`.
+- Respects `prefers-reduced-motion` (no intro, orbiting, twinkling or
+  blinking).
 
 Colors (Tailwind theme in `src/app.css`, dark only):
 
@@ -91,12 +98,13 @@ src/
 ├── App.svelte             # Layout, hover/selection state
 ├── main.ts                # Mounts App, loads fonts
 ├── app.css                # Tailwind entry, theme tokens, keyframes
-├── components/            # FleetMap, NodePanel, Roster, EventLog, Sparkline, Starfield
+├── components/            # FleetMap, NodePanel, Roster, EventLog, Sparkline, Starfield, Boot
 ├── lib/
 │   ├── fleet.svelte.ts    # The one place data is loaded (mock or /api/fleet)
 │   ├── mock.ts            # Mock fleet that changes over time
 │   ├── events.ts          # Status-change diffing for the log
 │   ├── geometry.ts        # Orbits, outposts, asteroid and bracket paths
+│   ├── intro.ts           # First-visit intro: when to play, launch easing
 │   └── nodes.ts           # allNodes, status labels/colors, counts
 └── validators/            # Zod schemas: fleet.ts (API contract), config.ts (fleet.config.json)
 server/
