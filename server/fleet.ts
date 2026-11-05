@@ -1,6 +1,7 @@
 import type { FleetConfig } from "../src/validators/config";
 import type { Fleet, FleetNode, Status } from "../src/validators/fleet";
 
+import type { BeszelSnapshot, BeszelSystem } from "./beszel";
 import type { CoolifyResource, CoolifySnapshot } from "./coolify";
 
 // Groups related Coolify resources into one project by stripping known
@@ -114,10 +115,52 @@ function safeOr(text: string | undefined, fallback = ""): string {
     return text && isSafeText(text) ? text : fallback;
 }
 
+const round = (v: number) => Math.round(v * 10) / 10;
+const percent = (v: number) => round(Math.min(100, Math.max(0, v)));
+
+export function findSystem(
+    metrics: BeszelSnapshot | null,
+    name: string
+): BeszelSystem | null {
+    const wanted = name.trim().toLowerCase();
+    return (
+        metrics?.systems.find((s) => s.name.trim().toLowerCase() === wanted) ??
+        null
+    );
+}
+
+// Beszel's statuses: up, down, paused, pending. Only up and down say
+// anything about the machine itself.
+export function machineStatus(system: BeszelSystem | null): Status {
+    if (system?.status === "up") return "up";
+    if (system?.status === "down") return "down";
+    return "unknown";
+}
+
+// Coolify names containers after the resource uuid, so a project's
+// containers are the ones whose name contains one of its uuids.
+export function projectMetrics(
+    members: CoolifyResource[],
+    host: BeszelSystem | null
+): { cpu: number | null; ram: number | null } {
+    if (!host || host.status !== "up") return { cpu: null, ram: null };
+    const containers = host.containers.filter((c) =>
+        members.some((m) => c.name.includes(m.uuid))
+    );
+    if (containers.length === 0) return { cpu: null, ram: null };
+    const cpu = containers.reduce((sum, c) => sum + c.cpu, 0);
+    const memory = containers.reduce((sum, c) => sum + c.memoryMb, 0);
+    return {
+        cpu: percent(cpu),
+        ram: host.memoryMb ? percent((memory / host.memoryMb) * 100) : null,
+    };
+}
+
 export function buildFleet(
     snapshot: CoolifySnapshot,
     config: FleetConfig,
-    now: number
+    now: number,
+    metrics: BeszelSnapshot | null = null
 ): Fleet {
     const groups = new Map<string, CoolifyResource[]>();
     for (const resource of snapshot.resources) {
@@ -125,6 +168,17 @@ export function buildFleet(
         if (config.projects[id]?.hidden || !isSafeText(id)) continue;
         groups.set(id, [...(groups.get(id) ?? []), resource]);
     }
+
+    const host =
+        snapshot.servers.find((s) => s.is_coolify_host) ?? snapshot.servers[0];
+    const hostUp =
+        !!host && host.is_reachable !== false && host.is_usable !== false;
+    const hostName =
+        host && host.name !== "localhost" && isSafeText(host.name)
+            ? host.name
+            : "server";
+    const coreName = config.core.name ?? hostName;
+    const coreSystem = findSystem(metrics, config.core.beszel ?? coreName);
 
     const projects: FleetNode[] = [...groups.entries()]
         .map(([id, members]): FleetNode => {
@@ -147,21 +201,12 @@ export function buildFleet(
                 status: worstStatus(
                     members.map((m) => resourceStatus(m.status))
                 ),
-                cpu: null,
-                ram: null,
+                ...projectMetrics(members, coreSystem),
                 url,
+                uptime: null,
             };
         })
         .sort((a, b) => a.name.localeCompare(b.name));
-
-    const host =
-        snapshot.servers.find((s) => s.is_coolify_host) ?? snapshot.servers[0];
-    const hostUp =
-        !!host && host.is_reachable !== false && host.is_usable !== false;
-    const hostName =
-        host && host.name !== "localhost" && isSafeText(host.name)
-            ? host.name
-            : "server";
 
     return {
         updatedAt: now,
@@ -171,28 +216,39 @@ export function buildFleet(
         },
         core: {
             id: "core",
-            name: config.core.name ?? hostName,
+            name: coreName,
             kind: "core",
             role: config.core.role,
             description: config.core.description,
             status: hostUp ? "up" : "down",
-            cpu: null,
-            ram: null,
+            ...systemMetrics(coreSystem),
             url: null,
         },
         projects,
-        // Machines come from the config. Their status comes from Beszel later.
-        machines: config.machines.map((m) => ({
-            id: `machine-${m.id}`,
-            name: m.name ?? m.id,
-            kind: "machine",
-            role: m.role,
-            description: m.description,
-            status: "unknown",
-            cpu: null,
-            ram: null,
-            url: null,
-        })),
+        // Machines come from the config, their status from Beszel.
+        machines: config.machines.map((m): FleetNode => {
+            const name = m.name ?? m.id;
+            const system = findSystem(metrics, m.beszel ?? name);
+            return {
+                id: `machine-${m.id}`,
+                name,
+                kind: "machine",
+                role: m.role,
+                description: m.description,
+                status: machineStatus(system),
+                ...systemMetrics(system),
+                url: null,
+            };
+        }),
+    };
+}
+
+function systemMetrics(system: BeszelSystem | null) {
+    const up = system?.status === "up";
+    return {
+        cpu: up && system.cpu !== null ? percent(system.cpu) : null,
+        ram: up && system.ram !== null ? percent(system.ram) : null,
+        uptime: up && system.uptime !== null ? Math.round(system.uptime) : null,
     };
 }
 

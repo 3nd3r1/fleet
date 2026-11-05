@@ -3,6 +3,7 @@ import type { Fleet, Site } from "../src/validators/fleet";
 import { join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { createBeszel } from "./beszel";
 import { loadConfig } from "./config";
 import { fetchCoolify } from "./coolify";
 import { buildFleet, createFleetCache } from "./fleet";
@@ -101,11 +102,36 @@ if (import.meta.main) {
     const config = loadConfig();
     const url = process.env.COOLIFY_URL;
     const token = process.env.COOLIFY_TOKEN;
+    const { BESZEL_URL, BESZEL_EMAIL, BESZEL_PASSWORD } = process.env;
+    const fetchBeszel =
+        BESZEL_URL && BESZEL_EMAIL && BESZEL_PASSWORD
+            ? createBeszel(BESZEL_URL, BESZEL_EMAIL, BESZEL_PASSWORD)
+            : null;
+    if (!fetchBeszel) console.warn("Beszel not configured, no metrics");
+
+    // Metrics are optional: if Beszel fails, the map still shows statuses.
+    const loadMetrics = async () => {
+        if (!fetchBeszel) return null;
+        try {
+            return await fetchBeszel();
+        } catch (error) {
+            console.error(
+                "beszel:",
+                error instanceof Error ? error.message : error
+            );
+            return null;
+        }
+    };
+
     const getFleet =
         url && token
-            ? createFleetCache(async () =>
-                  buildFleet(await fetchCoolify(url, token), config, Date.now())
-              )
+            ? createFleetCache(async () => {
+                  const [snapshot, metrics] = await Promise.all([
+                      fetchCoolify(url, token),
+                      loadMetrics(),
+                  ]);
+                  return buildFleet(snapshot, config, Date.now(), metrics);
+              })
             : null;
     if (!getFleet) console.warn("COOLIFY_URL or COOLIFY_TOKEN not set");
 

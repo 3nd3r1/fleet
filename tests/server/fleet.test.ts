@@ -1,4 +1,5 @@
 // @vitest-environment node
+import type { BeszelSnapshot } from "../../server/beszel";
 import { parseConfig } from "../../server/config";
 import {
     type CoolifyResource,
@@ -8,7 +9,9 @@ import {
 import {
     buildFleet,
     createFleetCache,
+    findSystem,
     isSafeText,
+    machineStatus,
     projectName,
     publicUrl,
     resourceStatus,
@@ -381,5 +384,92 @@ describe("createFleetCache", () => {
             throw new Error("down");
         });
         await expect(get()).rejects.toThrow("down");
+    });
+});
+
+describe("beszel metrics", () => {
+    const metrics: BeszelSnapshot = {
+        systems: [
+            {
+                name: "Station",
+                status: "up",
+                cpu: 40,
+                ram: 60,
+                uptime: 1000.4,
+                memoryMb: 8192,
+                containers: [
+                    { name: "bloglist-frontend-123", cpu: 1.5, memoryMb: 256 },
+                    { name: "bloglist-backend-456", cpu: 2.5, memoryMb: 768 },
+                    { name: "coolify-proxy", cpu: 0.5, memoryMb: 100 },
+                ],
+            },
+            {
+                name: "laptop",
+                status: "up",
+                cpu: 12,
+                ram: 41,
+                uptime: 500,
+                memoryMb: 16384,
+                containers: [],
+            },
+            {
+                name: "work",
+                status: "down",
+                cpu: null,
+                ram: null,
+                uptime: null,
+                memoryMb: null,
+                containers: [],
+            },
+        ],
+    };
+    const config = parseConfig({
+        core: { name: "station" },
+        machines: [
+            { id: "laptop" },
+            { id: "work" },
+            { id: "phone" },
+            { id: "desk", beszel: "Laptop" },
+        ],
+    });
+    const fleet = buildFleet(snapshot, config, 1000, metrics);
+
+    it("matches systems by name, ignoring case", () => {
+        expect(findSystem(metrics, "station")?.name).toBe("Station");
+        expect(findSystem(metrics, "nope")).toBeNull();
+        expect(findSystem(null, "station")).toBeNull();
+    });
+
+    it("gives the core its CPU, RAM and uptime", () => {
+        expect(fleet.core).toMatchObject({ cpu: 40, ram: 60, uptime: 1000 });
+    });
+
+    it("sums a project's containers", () => {
+        const blog = fleet.projects.find((p) => p.id === "bloglist");
+        expect(blog?.cpu).toBe(4);
+        expect(blog?.ram).toBe(12.5);
+    });
+
+    it("has no metrics for projects without containers", () => {
+        expect(fleet.projects.find((p) => p.id === "thrivy")?.cpu).toBeNull();
+    });
+
+    it("maps machine statuses", () => {
+        const byName = (name: string) =>
+            fleet.machines.find((m) => m.name === name);
+        expect(byName("laptop")).toMatchObject({ status: "up", cpu: 12 });
+        expect(byName("work")).toMatchObject({ status: "down", cpu: null });
+        expect(byName("phone")?.status).toBe("unknown");
+        expect(byName("desk")?.status).toBe("up");
+    });
+
+    it("treats paused and pending as unknown", () => {
+        const system = { ...metrics.systems[0], status: "paused" };
+        expect(machineStatus(system)).toBe("unknown");
+        expect(machineStatus({ ...system, status: "pending" })).toBe("unknown");
+    });
+
+    it("still matches the schema", () => {
+        expect(fleetSchema.safeParse(fleet).success).toBe(true);
     });
 });
