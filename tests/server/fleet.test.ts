@@ -1,17 +1,40 @@
 // @vitest-environment node
-import { type CoolifySnapshot, fetchCoolify } from "../../server/coolify";
+import { parseConfig } from "../../server/config";
+import {
+    type CoolifyResource,
+    type CoolifySnapshot,
+    fetchCoolify,
+} from "../../server/coolify";
 import {
     buildFleet,
     createFleetCache,
     isSafeText,
     projectName,
+    publicUrl,
     resourceStatus,
+    safeUrl,
     worstStatus,
 } from "../../server/fleet";
 
 import { describe, expect, it, vi } from "vitest";
 
 import { fleetSchema } from "@/validators/fleet";
+
+const defaults = parseConfig({});
+
+const resource = (
+    name: string,
+    status: string,
+    type: CoolifyResource["type"] = "app",
+    extra: Partial<CoolifyResource> = {}
+): CoolifyResource => ({
+    uuid: name,
+    name,
+    status,
+    type,
+    domains: [],
+    ...extra,
+});
 
 const snapshot: CoolifySnapshot = {
     servers: [
@@ -24,53 +47,60 @@ const snapshot: CoolifySnapshot = {
         },
     ],
     resources: [
-        {
-            uuid: "a",
-            name: "bloglist-frontend",
-            status: "running:unknown",
-            type: "app",
-        },
-        {
-            uuid: "b",
-            name: "bloglist-backend",
-            status: "exited:unhealthy",
-            type: "app",
-        },
-        {
-            uuid: "c",
-            name: "thrivy-page",
-            status: "running:healthy",
-            type: "app",
-        },
-        {
-            uuid: "d",
-            name: "thrivy-database",
-            status: "running:healthy",
-            type: "db",
-        },
-        {
-            uuid: "e",
-            name: "nextcloud",
-            status: "running:healthy",
+        resource("bloglist-frontend", "running:unknown", "app", {
+            domains: [
+                { name: "bloglist-frontend", url: "https://blog.example.com" },
+            ],
+        }),
+        resource("bloglist-backend", "exited:unhealthy", "app", {
+            domains: [
+                {
+                    name: "bloglist-backend",
+                    url: "https://api.blog.example.com",
+                },
+            ],
+        }),
+        resource("thrivy-page", "running:healthy"),
+        resource("thrivy-database", "running:healthy", "db"),
+        resource("nextcloud", "running:healthy", "service", {
             description: "Runs on 10.0.0.5:8080 with v1.2.3",
-            type: "service",
-        },
+            domains: [{ name: "nextcloud", url: "https://drive.example.com" }],
+        }),
+        resource("monitor", "running:healthy", "service", {
+            domains: [
+                {
+                    name: "monitor",
+                    url: "http://monitor-abc.10.0.0.5.sslip.io:8090",
+                },
+            ],
+        }),
     ],
 };
 
 describe("projectName", () => {
+    const name = (n: string) => projectName(n, defaults.grouping);
+
     it("groups frontends, backends, pages and databases", () => {
-        expect(projectName("bloglist-frontend")).toBe("bloglist");
-        expect(projectName("bloglist-backend")).toBe("bloglist");
-        expect(projectName("thrivy-page")).toBe("thrivy");
-        expect(projectName("timescaledb-tune-ui")).toBe("timescaledb-tune");
-        expect(projectName("commute-ai/ai-agents")).toBe("commute-ai");
-        expect(projectName("commute-ai-backend-database")).toBe("commute-ai");
+        expect(name("bloglist-frontend")).toBe("bloglist");
+        expect(name("bloglist-backend")).toBe("bloglist");
+        expect(name("thrivy-page")).toBe("thrivy");
+        expect(name("timescaledb-tune-ui")).toBe("timescaledb-tune");
+        expect(name("commute-ai/ai-agents")).toBe("commute-ai");
+        expect(name("commute-ai-backend-database")).toBe("commute-ai");
     });
 
     it("leaves plain names alone", () => {
-        expect(projectName("nextcloud")).toBe("nextcloud");
-        expect(projectName("ender-homepage")).toBe("ender-homepage");
+        expect(name("nextcloud")).toBe("nextcloud");
+        expect(name("ender-homepage")).toBe("ender-homepage");
+    });
+
+    it("uses configured suffixes and aliases", () => {
+        const grouping = parseConfig({
+            grouping: { suffixes: ["svc"], aliases: { legacy: "blog" } },
+        }).grouping;
+        expect(projectName("shop-svc", grouping)).toBe("shop");
+        expect(projectName("shop-frontend", grouping)).toBe("shop-frontend");
+        expect(projectName("legacy", grouping)).toBe("blog");
     });
 });
 
@@ -102,26 +132,75 @@ describe("isSafeText", () => {
     });
 });
 
+describe("safeUrl", () => {
+    it("keeps plain https domains as their origin", () => {
+        expect(safeUrl("https://blog.example.com/admin?x=1")).toBe(
+            "https://blog.example.com"
+        );
+    });
+
+    it("rejects http, ports, IPs and sslip hosts", () => {
+        expect(safeUrl("http://blog.example.com")).toBeNull();
+        expect(safeUrl("https://blog.example.com:8443")).toBeNull();
+        expect(safeUrl("https://10.0.0.5")).toBeNull();
+        expect(safeUrl("https://app.10.0.0.5.sslip.io")).toBeNull();
+        expect(safeUrl("https://app.nip.io")).toBeNull();
+        expect(safeUrl("not a url")).toBeNull();
+    });
+});
+
+describe("publicUrl", () => {
+    it("skips backends, APIs and agents", () => {
+        expect(
+            publicUrl([
+                resource("x-backend", "running", "app", {
+                    domains: [{ name: "x-backend", url: "https://api.x.com" }],
+                }),
+                resource("x", "running", "service", {
+                    domains: [
+                        { name: "x-agent", url: "https://agent.x.com" },
+                        { name: "x", url: "https://x.com" },
+                    ],
+                }),
+            ])
+        ).toBe("https://x.com");
+    });
+
+    it("returns null when only internal domains exist", () => {
+        expect(
+            publicUrl([
+                resource("x/backend", "running", "app", {
+                    domains: [{ name: "x/backend", url: "https://api.x.com" }],
+                }),
+            ])
+        ).toBeNull();
+    });
+});
+
 describe("buildFleet", () => {
-    const fleet = buildFleet(snapshot, 1000);
+    const fleet = buildFleet(snapshot, defaults, 1000);
+    const byId = (id: string) => fleet.projects.find((p) => p.id === id);
 
     it("matches the schema", () => {
         expect(fleetSchema.safeParse(fleet).success).toBe(true);
     });
 
     it("groups resources into projects with the worst status", () => {
-        const bloglist = fleet.projects.find((p) => p.id === "bloglist");
-        expect(bloglist?.status).toBe("down");
-        expect(bloglist?.role).toBe("2 apps");
-        expect(fleet.projects.find((p) => p.id === "thrivy")?.role).toBe(
-            "1 app · 1 db"
-        );
+        expect(byId("bloglist")?.status).toBe("down");
+        expect(byId("bloglist")?.role).toBe("2 apps");
+        expect(byId("thrivy")?.role).toBe("1 app · 1 db");
+    });
+
+    it("links the public domain, not the backend", () => {
+        expect(byId("bloglist")?.url).toBe("https://blog.example.com");
+    });
+
+    it("never links an sslip address", () => {
+        expect(byId("monitor")?.url).toBeNull();
     });
 
     it("drops descriptions with IPs, ports or versions", () => {
-        expect(
-            fleet.projects.find((p) => p.id === "nextcloud")?.description
-        ).toBe("");
+        expect(byId("nextcloud")?.description).toBe("");
     });
 
     it("never leaks IPs, ports or versions in any text", () => {
@@ -134,25 +213,63 @@ describe("buildFleet", () => {
         for (const text of strings(fleet)) expect(isSafeText(text)).toBe(true);
     });
 
-    it("marks eros down when the server is unreachable", () => {
+    it("uses defaults without a config", () => {
+        expect(fleet.site.title).toBe("fleet");
+        expect(fleet.core.name).toBe("server");
+        expect(fleet.machines).toEqual([]);
+    });
+
+    it("applies project settings from the config", () => {
+        const config = parseConfig({
+            projects: {
+                bloglist: {
+                    name: "Blog",
+                    description: "Where I write.",
+                    url: false,
+                },
+                thrivy: { hidden: true },
+                nextcloud: { url: "https://files.example.com" },
+            },
+        });
+        const configured = buildFleet(snapshot, config, 1000);
+        const blog = configured.projects.find((p) => p.id === "bloglist");
+        expect(blog?.name).toBe("Blog");
+        expect(blog?.description).toBe("Where I write.");
+        expect(blog?.url).toBeNull();
+        expect(configured.projects.some((p) => p.id === "thrivy")).toBe(false);
+        expect(configured.projects.find((p) => p.id === "nextcloud")?.url).toBe(
+            "https://files.example.com"
+        );
+    });
+
+    it("takes site, core and machines from the config", () => {
+        const config = parseConfig({
+            site: { title: "my fleet" },
+            core: { name: "mothership" },
+            machines: [{ id: "laptop", role: "laptop" }],
+        });
+        const configured = buildFleet(snapshot, config, 1000);
+        expect(configured.site.title).toBe("my fleet");
+        expect(configured.core.name).toBe("mothership");
+        expect(configured.machines).toHaveLength(1);
+        expect(configured.machines[0].status).toBe("unknown");
+    });
+
+    it("marks the core down when the server is unreachable", () => {
         const down = buildFleet(
             {
                 ...snapshot,
                 servers: [{ ...snapshot.servers[0], is_reachable: false }],
             },
+            defaults,
             1000
         );
         expect(down.core.status).toBe("down");
     });
-
-    it("has no metrics until Beszel is wired up", () => {
-        expect(fleet.core.cpu).toBeNull();
-        expect(fleet.machines.every((m) => m.status === "unknown")).toBe(true);
-    });
 });
 
 describe("fetchCoolify", () => {
-    it("keeps only whitelisted fields", async () => {
+    it("keeps only whitelisted fields and reads service domains", async () => {
         const fetcher = vi.fn(async (url: string | URL | Request) => {
             const path = String(url);
             const body = path.endsWith("/servers")
@@ -171,11 +288,27 @@ describe("fetchCoolify", () => {
                             uuid: "a",
                             name: "thrivy-page",
                             status: "running:healthy",
+                            fqdn: "https://thrivy.example.com,https://www.thrivy.example.com",
                             ports_exposes: "3000",
                             git_commit_sha: "abc",
                         },
                     ]
-                  : [];
+                  : path.endsWith("/services")
+                    ? [
+                          {
+                              uuid: "s",
+                              name: "nextcloud",
+                              status: "running:healthy",
+                              server: { ip: "10.0.0.5" },
+                              applications: [
+                                  {
+                                      name: "nextcloud",
+                                      fqdn: "https://drive.example.com",
+                                  },
+                              ],
+                          },
+                      ]
+                    : [];
             return Response.json(body);
         }) as unknown as typeof fetch;
 
@@ -188,7 +321,10 @@ describe("fetchCoolify", () => {
         expect(text).not.toContain("10.0.0.5");
         expect(text).not.toContain("ports_exposes");
         expect(text).not.toContain("git_commit_sha");
-        expect(result.resources).toHaveLength(1);
+        expect(result.resources[0].domains).toHaveLength(2);
+        expect(result.resources[1].domains[0].url).toBe(
+            "https://drive.example.com"
+        );
     });
 
     it("throws on a bad response", async () => {
@@ -201,7 +337,7 @@ describe("fetchCoolify", () => {
 });
 
 describe("createFleetCache", () => {
-    const fleet = buildFleet(snapshot, 1000);
+    const fleet = buildFleet(snapshot, defaults, 1000);
 
     it("loads once within the ttl", async () => {
         const load = vi.fn(async () => fleet);

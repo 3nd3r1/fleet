@@ -1,22 +1,32 @@
+import type { FleetConfig } from "../src/validators/config";
 import type { Fleet, FleetNode, Status } from "../src/validators/fleet";
 
 import type { CoolifyResource, CoolifySnapshot } from "./coolify";
-import { MACHINES } from "./machines";
-import { DESCRIPTIONS, HIDDEN } from "./projects";
 
-const SUFFIX = /-(frontend|backend|page|ui|database|db|api|web)$/;
+// Groups related Coolify resources into one project by stripping known
+// suffixes: "blog-frontend", "blog-backend" → "blog". Anything before a "/"
+// is the project too: "commute-ai/ai-agents" → "commute-ai".
+export function projectName(
+    name: string,
+    grouping: FleetConfig["grouping"]
+): string {
+    const alias = grouping.aliases[name];
+    if (alias) return alias;
 
-// Groups related Coolify resources into one project:
-// "bloglist-frontend", "bloglist-backend" → "bloglist",
-// "commute-ai/ai-agents", "commute-ai-backend-database" → "commute-ai".
-export function projectName(name: string): string {
+    const suffix = new RegExp(
+        `-(${grouping.suffixes.map(escapeRegExp).join("|")})$`
+    );
     let current = name.toLowerCase().split("/")[0].trim();
     let previous;
     do {
         previous = current;
-        current = current.replace(SUFFIX, "");
+        current = current.replace(suffix, "");
     } while (current !== previous && current.length > 0);
     return current || name.toLowerCase();
+}
+
+function escapeRegExp(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Coolify statuses look like "running:healthy", "running:unknown",
@@ -56,6 +66,36 @@ export function isSafeText(text: string): boolean {
     return !UNSAFE.some((pattern) => pattern.test(text));
 }
 
+// Only plain https links on a real domain. No ports, no IPs, no sslip.io or
+// nip.io style hosts (they contain the server's IP).
+export function safeUrl(url: string): string | null {
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return null;
+    }
+    const host = parsed.hostname;
+    if (parsed.protocol !== "https:" || parsed.port) return null;
+    if (/(^|\.)(sslip\.io|nip\.io|traefik\.me)$/.test(host)) return null;
+    if (!isSafeText(host) || host.includes(":")) return null;
+    return parsed.origin;
+}
+
+// Backends, APIs, workers and agents are not something to link to.
+const INTERNAL = /(^|[-/])(backend|api|database|db|worker|agents?)($|[-/])/;
+
+export function publicUrl(members: CoolifyResource[]): string | null {
+    for (const member of members) {
+        for (const domain of member.domains) {
+            if (INTERNAL.test(domain.name.toLowerCase())) continue;
+            const url = safeUrl(domain.url);
+            if (url) return url;
+        }
+    }
+    return null;
+}
+
 function roleFor(members: CoolifyResource[]): string {
     const count = (type: CoolifyResource["type"]) =>
         members.filter((m) => m.type === type).length;
@@ -70,54 +110,89 @@ function roleFor(members: CoolifyResource[]): string {
     return parts.join(" · ") || "project";
 }
 
-export function buildFleet(snapshot: CoolifySnapshot, now: number): Fleet {
+function safeOr(text: string | undefined, fallback = ""): string {
+    return text && isSafeText(text) ? text : fallback;
+}
+
+export function buildFleet(
+    snapshot: CoolifySnapshot,
+    config: FleetConfig,
+    now: number
+): Fleet {
     const groups = new Map<string, CoolifyResource[]>();
     for (const resource of snapshot.resources) {
-        const id = projectName(resource.name);
-        if (HIDDEN.has(id) || !isSafeText(id)) continue;
+        const id = projectName(resource.name, config.grouping);
+        if (config.projects[id]?.hidden || !isSafeText(id)) continue;
         groups.set(id, [...(groups.get(id) ?? []), resource]);
     }
 
     const projects: FleetNode[] = [...groups.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([id, members]) => {
+        .map(([id, members]): FleetNode => {
+            const settings = config.projects[id] ?? {};
             const fromCoolify = members
                 .map((m) => m.description?.trim() ?? "")
                 .find((d) => d && isSafeText(d));
+            const url =
+                settings.url === false
+                    ? null
+                    : settings.url
+                      ? safeUrl(settings.url)
+                      : publicUrl(members);
             return {
                 id,
-                name: id,
+                name: safeOr(settings.name, id),
                 kind: "project",
                 role: roleFor(members),
-                description: DESCRIPTIONS[id] ?? fromCoolify ?? "",
+                description: safeOr(settings.description ?? fromCoolify),
                 status: worstStatus(
                     members.map((m) => resourceStatus(m.status))
                 ),
                 cpu: null,
                 ram: null,
+                url,
             };
-        });
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     const host =
         snapshot.servers.find((s) => s.is_coolify_host) ?? snapshot.servers[0];
     const hostUp =
         !!host && host.is_reachable !== false && host.is_usable !== false;
+    const hostName =
+        host && host.name !== "localhost" && isSafeText(host.name)
+            ? host.name
+            : "server";
 
     return {
         updatedAt: now,
+        site: {
+            title: config.site.title,
+            description: config.site.description,
+        },
         core: {
-            id: "eros",
-            name: "eros",
+            id: "core",
+            name: config.core.name ?? hostName,
             kind: "core",
-            role: "vps · coolify",
-            description:
-                "Runs Coolify and every project orbiting it, this page included.",
+            role: config.core.role,
+            description: config.core.description,
             status: hostUp ? "up" : "down",
             cpu: null,
             ram: null,
+            url: null,
         },
         projects,
-        machines: MACHINES,
+        // Machines come from the config. Their status comes from Beszel later.
+        machines: config.machines.map((m) => ({
+            id: `machine-${m.id}`,
+            name: m.name ?? m.id,
+            kind: "machine",
+            role: m.role,
+            description: m.description,
+            status: "unknown",
+            cpu: null,
+            ram: null,
+            url: null,
+        })),
     };
 }
 

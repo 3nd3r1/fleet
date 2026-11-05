@@ -17,6 +17,7 @@ USER bun
 COPY --from=deps --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=builder --chown=bun:bun /app/dist ./dist
 COPY --chown=bun:bun server ./server
-COPY --chown=bun:bun package.json tsconfig.json ./
+COPY --chown=bun:bun src/validators ./src/validators
+COPY --chown=bun:bun package.json tsconfig.json fleet.config.json ./
 EXPOSE 3000
 CMD ["bun", "server/index.ts"]

@@ -13,10 +13,18 @@ export const nodeSchema = z.object({
     // null when there are no metrics for this node yet.
     cpu: z.number().min(0).max(100).nullable(),
     ram: z.number().min(0).max(100).nullable(),
+    // Public link for the side panel, null for none.
+    url: z.url().nullable(),
+});
+
+export const siteSchema = z.object({
+    title: z.string().min(1),
+    description: z.string(),
 });
 
 export const fleetSchema = z.object({
     updatedAt: z.number(),
+    site: siteSchema,
     core: nodeSchema,
     projects: z.array(nodeSchema),
     machines: z.array(nodeSchema),
@@ -24,4 +32,5 @@ export const fleetSchema = z.object({
 
 export type Status = z.infer<typeof statusSchema>;
 export type FleetNode = z.infer<typeof nodeSchema>;
+export type Site = z.infer<typeof siteSchema>;
 export type Fleet = z.infer<typeof fleetSchema>;

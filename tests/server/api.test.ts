@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { createApi } from "../../server/index";
+import { createApi, renderIndex } from "../../server/index";
 
 import { describe, expect, it } from "vitest";
 
@@ -42,5 +42,33 @@ describe("api", () => {
         const res = await handle(req("/api/fleet"));
         expect(res?.status).toBe(502);
         expect(JSON.stringify(await res?.json())).not.toContain("secret-host");
+    });
+});
+
+describe("renderIndex", () => {
+    const html = `<head>
+        <title>fleet</title>
+        <meta
+            name="description"
+            content="old"
+        />
+    </head>`;
+
+    it("puts the configured title and description in", () => {
+        const out = renderIndex(html, {
+            title: "my fleet",
+            description: "new",
+        });
+        expect(out).toContain("<title>my fleet</title>");
+        expect(out).toContain('content="new"');
+    });
+
+    it("escapes html", () => {
+        const out = renderIndex(html, {
+            title: "<script>x</script>",
+            description: '"quoted"',
+        });
+        expect(out).not.toContain("<script>");
+        expect(out).toContain("&quot;quoted&quot;");
     });
 });

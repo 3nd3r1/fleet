@@ -10,21 +10,52 @@ const serverSchema = z.object({
     is_usable: z.boolean().optional(),
 });
 
-const resourceSchema = z.object({
+const appSchema = z.object({
     uuid: z.string(),
     name: z.string(),
     status: z.string().nullish(),
     description: z.string().nullish(),
+    fqdn: z.string().nullish(),
 });
 
+const serviceSchema = appSchema.extend({
+    // A service's domains live on the containers inside it.
+    applications: z
+        .array(z.object({ name: z.string(), fqdn: z.string().nullish() }))
+        .nullish(),
+});
+
+const databaseSchema = appSchema.omit({ fqdn: true });
+
 export type CoolifyServer = z.infer<typeof serverSchema>;
-export type CoolifyResource = z.infer<typeof resourceSchema> & {
+
+export interface CoolifyDomain {
+    // Name of the app or container the domain belongs to.
+    name: string;
+    url: string;
+}
+
+export interface CoolifyResource {
+    uuid: string;
+    name: string;
+    status?: string | null;
+    description?: string | null;
     type: "app" | "service" | "db";
-};
+    domains: CoolifyDomain[];
+}
 
 export interface CoolifySnapshot {
     servers: CoolifyServer[];
     resources: CoolifyResource[];
+}
+
+// Coolify stores several domains as one comma-separated string.
+function splitDomains(name: string, fqdn: string | null | undefined) {
+    return (fqdn ?? "")
+        .split(",")
+        .map((url) => url.trim())
+        .filter(Boolean)
+        .map((url) => ({ name, url }));
 }
 
 export async function fetchCoolify(
@@ -47,17 +78,38 @@ export async function fetchCoolify(
 
     const [servers, apps, services, dbs] = await Promise.all([
         get("/servers", serverSchema),
-        get("/applications", resourceSchema),
-        get("/services", resourceSchema),
-        get("/databases", resourceSchema),
+        get("/applications", appSchema),
+        get("/services", serviceSchema),
+        get("/databases", databaseSchema),
     ]);
+
+    const base_ = (r: z.infer<typeof databaseSchema>) => ({
+        uuid: r.uuid,
+        name: r.name,
+        status: r.status,
+        description: r.description,
+    });
 
     return {
         servers,
         resources: [
-            ...apps.map((r) => ({ ...r, type: "app" as const })),
-            ...services.map((r) => ({ ...r, type: "service" as const })),
-            ...dbs.map((r) => ({ ...r, type: "db" as const })),
+            ...apps.map((r) => ({
+                ...base_(r),
+                type: "app" as const,
+                domains: splitDomains(r.name, r.fqdn),
+            })),
+            ...services.map((r) => ({
+                ...base_(r),
+                type: "service" as const,
+                domains: (r.applications ?? []).flatMap((a) =>
+                    splitDomains(a.name, a.fqdn)
+                ),
+            })),
+            ...dbs.map((r) => ({
+                ...base_(r),
+                type: "db" as const,
+                domains: [],
+            })),
         ],
     };
 }

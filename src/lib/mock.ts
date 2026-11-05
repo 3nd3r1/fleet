@@ -7,22 +7,30 @@ type Seed = Omit<FleetNode, "status" | "cpu" | "ram"> & {
     ram: number;
 };
 
+// Generic sample data for development. Real deployments get their names,
+// descriptions and machines from Coolify and fleet.config.json.
+const SITE = {
+    title: "fleet (mock)",
+    description: "Mock data for development.",
+};
+
 const CORE: Seed = {
-    id: "eros",
-    name: "eros",
+    id: "core",
+    name: "station",
     kind: "core",
-    role: "vps · coolify",
-    description:
-        "Runs Coolify and every project orbiting it, this page included.",
+    role: "coolify host",
+    description: "Runs Coolify and every project orbiting it.",
     cpu: 0,
     ram: 0,
+    url: null,
 };
 
 const project = (
     name: string,
     cpu: number,
     ram: number,
-    description = ""
+    description = "",
+    url: string | null = null
 ): Seed => ({
     id: name,
     name,
@@ -31,19 +39,20 @@ const project = (
     description,
     cpu,
     ram,
+    url,
 });
 
 const PROJECTS: Seed[] = [
     project("fleet", 1, 2, "This page."),
-    project("ender-page", 2, 5),
-    project("booru", 9, 18),
-    project("datakolo", 6, 14),
-    project("timescaledb-tune", 4, 9),
-    project("bloglist", 3, 8),
-    project("millonkutsunnat", 2, 6),
-    project("protaskinate", 5, 12),
-    project("thrivy", 7, 15),
-    project("ender-drive", 6, 22),
+    project("homepage", 2, 5, "Personal site.", "https://example.com"),
+    project("gallery", 9, 18, "Image board."),
+    project("cms", 6, 14, "Headless CMS.", "https://cms.example.com"),
+    project("db-tuner", 4, 9),
+    project("blog", 3, 8, "A small blog."),
+    project("countdown", 2, 6),
+    project("tasks", 5, 12, "Project management."),
+    project("jobs", 7, 15),
+    project("drive", 6, 22, "File storage."),
 ];
 
 const machine = (
@@ -51,28 +60,23 @@ const machine = (
     role: string,
     cpu: number,
     ram: number,
-    description: string
+    description = ""
 ): Seed => ({
-    id: name,
+    id: `machine-${name}`,
     name,
     kind: "machine",
     role,
     description,
     cpu,
     ram,
+    url: null,
 });
 
 const MACHINES: Seed[] = [
-    machine(
-        "bean",
-        "laptop",
-        12,
-        41,
-        "NixOS with Hyprland. Most deploys to eros start here."
-    ),
-    machine("jane", "phone", 4, 46, "Pixel 10."),
-    machine("dragon", "desktop", 8, 30, "Desktop."),
-    machine("graff", "work mac", 18, 55, "Work machine."),
+    machine("laptop", "laptop", 12, 41),
+    machine("phone", "phone", 4, 46),
+    machine("desktop", "desktop", 8, 30),
+    machine("work", "work machine", 18, 55),
 ];
 
 interface Live {
@@ -99,8 +103,8 @@ export function createMock(
     );
 
     // Start with something going on, so every state shows up early.
-    Object.assign(live.get("booru")!, { status: "degraded", left: 90 });
-    Object.assign(live.get("graff")!, { status: "down", left: 140 });
+    Object.assign(live.get("gallery")!, { status: "degraded", left: 90 });
+    Object.assign(live.get("machine-work")!, { status: "down", left: 140 });
 
     const anyDown = () =>
         PROJECTS.some((p) => live.get(p.id)!.status === "down");
@@ -169,6 +173,7 @@ export function createMock(
 
         return {
             updatedAt: now(),
+            site: SITE,
             core: {
                 ...CORE,
                 status: cpu > 85 ? "degraded" : "up",
