@@ -9,14 +9,16 @@ interface IntroEnv {
     storage: Pick<Storage, "getItem"> | null;
     search: string;
     reducedMotion: boolean;
+    enabled?: boolean;
 }
 
 export function shouldPlayIntro({
     storage,
     search,
     reducedMotion,
+    enabled = true,
 }: IntroEnv): boolean {
-    if (reducedMotion) return false;
+    if (!enabled || reducedMotion) return false;
     if (new URLSearchParams(search).has("intro")) return true;
     try {
         return storage?.getItem(INTRO_KEY) === null;

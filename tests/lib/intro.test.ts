@@ -42,6 +42,17 @@ describe("shouldPlayIntro", () => {
         ).toBe(true);
     });
 
+    it("never plays when turned off in the config", () => {
+        expect(
+            shouldPlayIntro({
+                storage: storage(false),
+                search: "?intro",
+                reducedMotion: false,
+                enabled: false,
+            })
+        ).toBe(false);
+    });
+
     it("never plays with reduced motion", () => {
         expect(
             shouldPlayIntro({

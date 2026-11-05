@@ -32,6 +32,8 @@
         storage,
         search: location.search,
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+        // The server sets this from site.intro in the config.
+        enabled: document.documentElement.dataset.intro !== "off",
     });
     let intro = $state<IntroPhase>(playIntro ? "hold" : "off");
     let booting = $state(playIntro);
