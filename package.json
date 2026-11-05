@@ -18,7 +18,8 @@
         "type-check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
         "docker:build": "docker build -t fleet .",
         "docker:run": "docker run --rm -p 3000:3000 fleet",
-        "schema": "bun scripts/schema.ts && prettier --write fleet.schema.json"
+        "schema": "bun scripts/schema.ts && prettier --write fleet.schema.json",
+        "doctor": "bun server/doctor.ts"
     },
     "dependencies": {
         "zod": "^4.6.7"
