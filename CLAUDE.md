@@ -29,8 +29,14 @@ Decided so far:
 
 Still open:
 
-- Beszel agents on bean, dragon and graff (jane has no Android agent). Until
-  they're added in the hub, the outposts show "no signal".
+- Beszel agents on dragon and graff (bean is done). Until they're added in the
+  hub, the outposts show "no signal".
+- jane (phone) has no Beszel agent. Plan: a token-protected
+  `POST /api/heartbeat/<machine>` that a phone automation app (HTTP Shortcuts,
+  Tasker, Termux) calls every few minutes, optionally with battery level. Up
+  while heartbeats arrive, offline when they stop. Alternative if I use
+  Tailscale: online status from the Tailscale API. Termux + Beszel agent was
+  rejected (Android blocks CPU stats, kills background processes).
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
   ragebaitor and vebbi (`deploy/eros.ender.fi.json`).
 - Before the first release: the name (fleet is a common name), a generic
