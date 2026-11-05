@@ -16,12 +16,16 @@ Decided so far:
   proxies Coolify (Beszel later). TypeScript is pinned to 6.x because
   typescript-eslint doesn't support 7 yet.
 - Coolify is not its own node. It's what runs eros, and eros's role says so.
+- Fleet should work for anyone's Coolify, so it can be released later. No
+  personal values in code: names, descriptions, links and machines live in
+  `fleet.config.json` (mine is committed), and everything is optional.
 
 Still open:
 
 - Beszel for metrics: eros CPU/RAM, and agents on bean, jane, dragon and graff
   so the outposts get a real status. Until then they show "no signal".
-- Per-project descriptions (`server/projects.ts`).
+- Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
+  ragebaitor and vebbi (`fleet.config.json`).
 
 ## Design
 
@@ -31,7 +35,7 @@ no decorative filler. Motion and changing numbers are what make it feel alive.
 
 - eros: the asteroid itself, a peanut outline turning slowly at the center,
   with range rings and bearing ticks around it.
-- Projects: ship chevrons on two orbits. Up ships orbit at full speed,
+- Projects: ship chevrons on three orbits. Up ships orbit at full speed,
   degraded ones slow down, down ones stop and blink.
 - Machines: square outposts at the edge, linked to eros by dashed lines with
   dots moving along them. A machine that's down is shown as "offline" in dim
@@ -89,20 +93,22 @@ src/
 ├── app.css                # Tailwind entry, theme tokens, keyframes
 ├── components/            # FleetMap, NodePanel, Roster, EventLog, Sparkline, Starfield
 ├── lib/
-│   ├── config.ts          # Site details
 │   ├── fleet.svelte.ts    # The one place data is loaded (mock or /api/fleet)
 │   ├── mock.ts            # Mock fleet that changes over time
 │   ├── events.ts          # Status-change diffing for the log
 │   ├── geometry.ts        # Orbits, outposts, asteroid and bracket paths
 │   └── nodes.ts           # allNodes, status labels/colors, counts
-└── validators/            # Zod schemas (fleet.ts is the data contract)
-server/index.ts            # Bun server: /api/* + static dist/
+└── validators/            # Zod schemas: fleet.ts (API contract), config.ts (fleet.config.json)
+server/
+├── index.ts               # Bun server: /api/*, static dist/, title injection
+├── config.ts              # Loads fleet.config.json or FLEET_CONFIG
+├── coolify.ts             # Coolify client, whitelists fields
+└── fleet.ts               # Grouping, statuses, safe links, cache
+scripts/schema.ts          # Writes fleet.schema.json (bun run schema)
+fleet.config.json          # My deployment's config
 tests/                     # Mirrors src/ and server/
 public/                    # Favicons, copied as-is into dist/
 ```
-
-Switching to real data: add `/api/fleet` to the server returning the
-`fleetSchema` shape, and build with `VITE_FLEET_SOURCE=api`.
 
 ## Machines (named after Ender's Game)
 
@@ -118,15 +124,10 @@ DNS is on Cloudflare. ender.fi itself is my personal site.
 
 ## Projects on eros
 
-Comes from Coolify now. Resources are grouped by name (`bloglist-frontend` +
+Comes from Coolify. Resources are grouped by name (`bloglist-frontend` +
 `bloglist-backend` → `bloglist`, see `projectName` in `server/fleet.ts`).
-Hide one from the public page with `HIDDEN` in `server/projects.ts`. The list
-below is what the mock uses in dev.
-
-Mock list:
-
-ender-page, timescaledb-tune, booru, datakolo, bloglist, millonkutsunnat,
-protaskinate, thrivy, ender-drive.
+Per-project names, descriptions, links and hiding are in `fleet.config.json`.
+The mock in `src/lib/mock.ts` uses generic sample names, not mine.
 
 ## What the page does
 
@@ -153,7 +154,13 @@ protaskinate, thrivy, ender-drive.
 - Coolify statuses: `running:*` → up (`running:unhealthy` → degraded),
   `restarting`/`starting`/`degraded` → degraded, anything else → down. A
   project takes the worst status of its resources.
+- Links: the first plain `https` domain of a non-internal resource. Never
+  backends/APIs/agents, ports, IPs or sslip.io/nip.io hosts. Config `url`
+  overrides it, and `false` turns it off.
 - CPU/RAM are `null` until Beszel is added. The page shows "—".
+- `fleet.config.json` is parsed with `src/validators/config.ts` at startup. A
+  bad config stops the server with a readable error. After changing the
+  schema, run `bun run schema`.
 - Env (server only, never `VITE_`-prefixed): `COOLIFY_URL`, `COOLIFY_TOKEN`
   (read-only token). Locally in `.env`, which Bun loads. In production, set
   them as runtime env vars on the Coolify app (not build variables).
