@@ -17,16 +17,25 @@ Decided so far:
   proxies Coolify (Beszel later). TypeScript is pinned to 6.x because
   typescript-eslint doesn't support 7 yet.
 - Coolify is not its own node. It's what runs eros, and eros's role says so.
-- Fleet should work for anyone's Coolify, so it can be released later. No
-  personal values in code: names, descriptions, links and machines live in
-  `fleet.config.json` (mine is committed), and everything is optional.
+- Fleet should work for anyone's Coolify. No personal values in code or in the
+  image: names, descriptions, links and machines live in config. Mine is
+  `deploy/eros.ender.fi.json`. A local `fleet.config.json` is gitignored.
+- Release form: a Docker image on GHCR (`ghcr.io/3nd3r1/fleet`) built on `v*`
+  tags, configured with env vars and an optional config. Later, a Coolify
+  one-click template (`examples/coolify-template.yaml`). No npm package.
+- User docs: `README.md`, `docs/configuration.md`. Dev docs:
+  `docs/development.md`. Keep them in sync when behavior changes, and add
+  user-visible changes to `CHANGELOG.md` under Unreleased.
 
 Still open:
 
 - Beszel agents on bean, dragon and graff (jane has no Android agent). Until
   they're added in the hub, the outposts show "no signal".
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
-  ragebaitor and vebbi (`fleet.config.json`).
+  ragebaitor and vebbi (`deploy/eros.ender.fi.json`).
+- Before the first release: the name (fleet is a common name), a generic
+  favicon (`public/` has my personal icons), screenshots for the README,
+  making the repo and the GHCR package public.
 
 ## Design
 
@@ -89,6 +98,8 @@ bun run format       # Format with Prettier
 bun run test         # Run all tests
 bun run coverage     # Tests with coverage
 bun run type-check   # svelte-check (covers .ts and .svelte)
+bun run doctor       # Check the setup (config, Coolify, Beszel)
+bun run schema       # Regenerate fleet.schema.json after config schema changes
 bun run docker:build # Build the image
 ```
 
@@ -110,12 +121,16 @@ src/
 └── validators/            # Zod schemas: fleet.ts (API contract), config.ts (fleet.config.json)
 server/
 ├── index.ts               # Bun server: /api/*, static dist/, title injection
-├── config.ts              # Loads fleet.config.json or FLEET_CONFIG
+├── runtime.ts             # Reads env, wires Coolify + Beszel into one loader
+├── doctor.ts              # Setup checks (bun server/doctor.ts)
+├── config.ts              # FLEET_CONFIG_JSON, FLEET_CONFIG, ./fleet.config.json
 ├── coolify.ts             # Coolify client, whitelists fields
 ├── beszel.ts              # Beszel client (read-only user), whitelists fields
 └── fleet.ts               # Grouping, statuses, safe links, cache
 scripts/schema.ts          # Writes fleet.schema.json (bun run schema)
-fleet.config.json          # My deployment's config
+deploy/eros.ender.fi.json  # My deployment's config
+examples/                  # docker-compose.yml, coolify-template.yaml
+docs/                      # configuration.md (users), development.md
 tests/                     # Mirrors src/ and server/
 public/                    # Favicons, copied as-is into dist/
 ```
@@ -178,15 +193,20 @@ The mock in `src/lib/mock.ts` uses generic sample names, not mine.
   paused/pending/missing → unknown ("no signal").
 - Beszel is optional. If it's not configured or fails, metrics are `null`
   and the page shows "—". It never breaks the Coolify data.
-- `fleet.config.json` is parsed with `src/validators/config.ts` at startup. A
-  bad config stops the server with a readable error. After changing the
-  schema, run `bun run schema`.
+- Config comes from `FLEET_CONFIG_JSON`, then `FLEET_CONFIG`, then
+  `./fleet.config.json`, then defaults (`server/config.ts`). It's parsed with
+  `src/validators/config.ts` at startup, and a bad config stops the server
+  with a readable error. After changing the schema, run `bun run schema`.
+- `FLEET_CACHE_SECONDS` (default 20, min 5) sets the backend cache.
+  `site.intro: false` turns the intro off (the server sets `data-intro` on
+  `<html>`).
 - Env (server only, never `VITE_`-prefixed): `COOLIFY_URL`, `COOLIFY_TOKEN`
   (read-only token), `BESZEL_URL`, `BESZEL_EMAIL`, `BESZEL_PASSWORD`
   (read-only hub user). Locally in `.env`, which Bun loads. In production, set
   them as runtime env vars on the Coolify app (not build variables).
 - To run locally against Coolify: `bun run dev:server` and
-  `VITE_FLEET_SOURCE=api bun run dev`.
+  `VITE_FLEET_SOURCE=api bun run dev`. Locally `fleet.config.json` is a copy
+  of `deploy/eros.ender.fi.json`.
 
 ## Conventions (carried over from nextjs-template)
 
