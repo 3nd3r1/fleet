@@ -5,8 +5,9 @@ servers and the projects running on them.
 
 ## Status
 
-The map runs on real Coolify data (statuses only). No CPU/RAM yet, that comes
-with Beszel. Not deployed yet. Repo: github.com/3nd3r1/fleet (private).
+The map runs on real data: statuses, names and links from Coolify, CPU/RAM/
+uptime from Beszel. Deployed on Coolify as `fleet-frontend` (redeploy is
+manual until the GitHub webhook is added). Repo: github.com/3nd3r1/fleet (private).
 
 Decided so far:
 
@@ -22,8 +23,8 @@ Decided so far:
 
 Still open:
 
-- Beszel for metrics: eros CPU/RAM, and agents on bean, jane, dragon and graff
-  so the outposts get a real status. Until then they show "no signal".
+- Beszel agents on bean, dragon and graff (jane has no Android agent). Until
+  they're added in the hub, the outposts show "no signal".
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
   ragebaitor and vebbi (`fleet.config.json`).
 
@@ -111,6 +112,7 @@ server/
 ├── index.ts               # Bun server: /api/*, static dist/, title injection
 ├── config.ts              # Loads fleet.config.json or FLEET_CONFIG
 ├── coolify.ts             # Coolify client, whitelists fields
+├── beszel.ts              # Beszel client (read-only user), whitelists fields
 └── fleet.ts               # Grouping, statuses, safe links, cache
 scripts/schema.ts          # Writes fleet.schema.json (bun run schema)
 fleet.config.json          # My deployment's config
@@ -165,12 +167,23 @@ The mock in `src/lib/mock.ts` uses generic sample names, not mine.
 - Links: the first plain `https` domain of a non-internal resource. Never
   backends/APIs/agents, ports, IPs or sslip.io/nip.io hosts. Config `url`
   overrides it, and `false` turns it off.
-- CPU/RAM are `null` until Beszel is added. The page shows "—".
+- Metrics come from Beszel (`server/beszel.ts`) through a read-only hub user.
+  Only system name, status, cpu, mem %, uptime, total memory and per-container
+  cpu/mem are parsed. Host, port, hostname, kernel and versions never are.
+- The core and machines match Beszel systems by name, case-insensitively
+  (`beszel` in the config overrides). A project's CPU/RAM is the sum of the
+  containers whose name contains one of its Coolify uuids; RAM is a percent
+  of the host's total memory.
+- Beszel statuses: up → up, down → down (machines show "offline"),
+  paused/pending/missing → unknown ("no signal").
+- Beszel is optional. If it's not configured or fails, metrics are `null`
+  and the page shows "—". It never breaks the Coolify data.
 - `fleet.config.json` is parsed with `src/validators/config.ts` at startup. A
   bad config stops the server with a readable error. After changing the
   schema, run `bun run schema`.
 - Env (server only, never `VITE_`-prefixed): `COOLIFY_URL`, `COOLIFY_TOKEN`
-  (read-only token). Locally in `.env`, which Bun loads. In production, set
+  (read-only token), `BESZEL_URL`, `BESZEL_EMAIL`, `BESZEL_PASSWORD`
+  (read-only hub user). Locally in `.env`, which Bun loads. In production, set
   them as runtime env vars on the Coolify app (not build variables).
 - To run locally against Coolify: `bun run dev:server` and
   `VITE_FLEET_SOURCE=api bun run dev`.
@@ -209,6 +222,7 @@ that changes over time`.
 
 - The page is public. Never show IPs, ports or software versions, not even in
   mock data.
-- The Coolify API token must never reach the browser. Only the backend talks to Coolify.
+- The Coolify token and Beszel login must never reach the browser. Only the
+  backend talks to Coolify and Beszel.
 - Never read or print `.env`. Test through the running server instead.
 - It's deployed on Coolify on eros, so keep it light.
