@@ -60,6 +60,12 @@ export const fleetConfigSchema = z.strictObject({
                 .default(
                     "A live map of servers and the projects running on them."
                 ),
+            intro: z
+                .boolean()
+                .default(true)
+                .describe(
+                    "Play the boot sequence and ship launch on a visitor's first visit."
+                ),
         })
         .prefault({}),
     core: z

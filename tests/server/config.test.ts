@@ -18,7 +18,7 @@ const write = (content: string) => {
 describe("parseConfig", () => {
     it("fills in defaults for an empty config", () => {
         const config = parseConfig({});
-        expect(config.site.title).toBe("fleet");
+        expect(config.site).toMatchObject({ title: "fleet", intro: true });
         expect(config.core.name).toBeUndefined();
         expect(config.grouping.suffixes).toEqual(DEFAULT_SUFFIXES);
         expect(config.projects).toEqual({});
@@ -46,26 +46,43 @@ describe("parseConfig", () => {
 });
 
 describe("loadConfig", () => {
-    it("parses the example config", () => {
-        expect(() => loadConfig("fleet.config.example.json")).not.toThrow();
+    it("reads FLEET_CONFIG_JSON first", () => {
+        const loaded = loadConfig({
+            FLEET_CONFIG_JSON: '{ "site": { "title": "inline" } }',
+            FLEET_CONFIG: write('{ "site": { "title": "file" } }'),
+        });
+        expect(loaded.config.site.title).toBe("inline");
+        expect(loaded.source).toBe("FLEET_CONFIG_JSON");
     });
 
-    it("parses the deployed config", () => {
-        expect(() => loadConfig("fleet.config.json")).not.toThrow();
-    });
-
-    it("reads a config file", () => {
+    it("reads the FLEET_CONFIG file", () => {
         const file = write('{ "site": { "title": "my fleet" } }');
-        expect(loadConfig(file).site.title).toBe("my fleet");
+        const loaded = loadConfig({ FLEET_CONFIG: file });
+        expect(loaded.config.site.title).toBe("my fleet");
+        expect(loaded.source).toBe(file);
+    });
+
+    it("parses the example and the eros config", () => {
+        for (const file of [
+            "fleet.config.example.json",
+            "deploy/eros.ender.fi.json",
+        ]) {
+            expect(() => loadConfig({ FLEET_CONFIG: file })).not.toThrow();
+        }
     });
 
     it("errors on a missing FLEET_CONFIG file", () => {
-        expect(() => loadConfig("/nope/fleet.config.json")).toThrow(
-            /not found/
-        );
+        expect(() =>
+            loadConfig({ FLEET_CONFIG: "/nope/fleet.config.json" })
+        ).toThrow(/not found/);
     });
 
-    it("errors on broken JSON", () => {
-        expect(() => loadConfig(write("{ nope"))).toThrow(/Could not read/);
+    it("errors on broken JSON in a file or the env var", () => {
+        expect(() => loadConfig({ FLEET_CONFIG: write("{ nope") })).toThrow(
+            /Could not read/
+        );
+        expect(() => loadConfig({ FLEET_CONFIG_JSON: "{ nope" })).toThrow(
+            /FLEET_CONFIG_JSON/
+        );
     });
 });

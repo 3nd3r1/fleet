@@ -3,13 +3,10 @@ import type { Fleet, Site } from "../src/validators/fleet";
 import { join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createBeszel } from "./beszel";
-import { loadConfig } from "./config";
-import { fetchCoolify } from "./coolify";
-import { buildFleet, createFleetCache } from "./fleet";
+import { createFleetCache } from "./fleet";
+import { createLoader, readRuntime } from "./runtime";
 
 const DIST = fileURLToPath(new URL("../dist", import.meta.url));
-const PORT = Number(process.env.PORT ?? 3000);
 
 export function createApi(getFleet: (() => Promise<Fleet>) | null) {
     return async function handleApi(
@@ -61,8 +58,13 @@ const escapeHtml = (text: string) =>
 
 // Puts the configured title and description into index.html, so link
 // previews and the browser tab show them before any JavaScript runs.
-export function renderIndex(html: string, site: Site): string {
+export function renderIndex(
+    html: string,
+    site: Site & { intro?: boolean }
+): string {
+    const intro = site.intro === false ? "off" : "on";
     return html
+        .replace(/<html([^>]*)>/, `<html$1 data-intro="${intro}">`)
         .replace(
             /<title>[^<]*<\/title>/,
             `<title>${escapeHtml(site.title)}</title>`
@@ -99,51 +101,23 @@ async function serveStatic(req: Request, index: string): Promise<Response> {
 }
 
 if (import.meta.main) {
-    const config = loadConfig();
-    const url = process.env.COOLIFY_URL;
-    const token = process.env.COOLIFY_TOKEN;
-    const { BESZEL_URL, BESZEL_EMAIL, BESZEL_PASSWORD } = process.env;
-    const fetchBeszel =
-        BESZEL_URL && BESZEL_EMAIL && BESZEL_PASSWORD
-            ? createBeszel(BESZEL_URL, BESZEL_EMAIL, BESZEL_PASSWORD)
-            : null;
-    if (!fetchBeszel) console.warn("Beszel not configured, no metrics");
+    const runtime = readRuntime();
+    console.log(`config: ${runtime.source}`);
+    if (!runtime.coolify) console.warn("COOLIFY_URL or COOLIFY_TOKEN not set");
+    if (!runtime.fetchBeszel) console.warn("Beszel not configured, no metrics");
 
-    // Metrics are optional: if Beszel fails, the map still shows statuses.
-    const loadMetrics = async () => {
-        if (!fetchBeszel) return null;
-        try {
-            return await fetchBeszel();
-        } catch (error) {
-            console.error(
-                "beszel:",
-                error instanceof Error ? error.message : error
-            );
-            return null;
-        }
-    };
-
-    const getFleet =
-        url && token
-            ? createFleetCache(async () => {
-                  const [snapshot, metrics] = await Promise.all([
-                      fetchCoolify(url, token),
-                      loadMetrics(),
-                  ]);
-                  return buildFleet(snapshot, config, Date.now(), metrics);
-              })
-            : null;
-    if (!getFleet) console.warn("COOLIFY_URL or COOLIFY_TOKEN not set");
+    const load = createLoader(runtime);
+    const getFleet = load ? createFleetCache(load, runtime.cacheMs) : null;
 
     const indexFile = Bun.file(join(DIST, "index.html"));
     const index = (await indexFile.exists())
-        ? renderIndex(await indexFile.text(), config.site)
+        ? renderIndex(await indexFile.text(), runtime.config.site)
         : "Build the page first: bun run build";
 
     const handleApi = createApi(getFleet);
     Bun.serve({
-        port: PORT,
+        port: runtime.port,
         fetch: async (req) => (await handleApi(req)) ?? serveStatic(req, index),
     });
-    console.log(`fleet listening on :${PORT}`);
+    console.log(`fleet listening on :${runtime.port}`);
 }

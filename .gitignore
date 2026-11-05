@@ -21,3 +21,6 @@
 
 # nixers
 .direnv
+
+# local config (copy of deploy/ or your own)
+/fleet.config.json

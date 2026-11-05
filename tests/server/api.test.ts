@@ -63,6 +63,16 @@ describe("renderIndex", () => {
         expect(out).toContain('content="new"');
     });
 
+    it("marks the intro as on or off", () => {
+        const page = `<html lang="en">${html}</html>`;
+        expect(renderIndex(page, { title: "t", description: "d" })).toContain(
+            '<html lang="en" data-intro="on">'
+        );
+        expect(
+            renderIndex(page, { title: "t", description: "d", intro: false })
+        ).toContain('data-intro="off"');
+    });
+
     it("escapes html", () => {
         const out = renderIndex(html, {
             title: "<script>x</script>",

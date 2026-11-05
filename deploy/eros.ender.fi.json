@@ -1,5 +1,5 @@
 {
-    "$schema": "./fleet.schema.json",
+    "$schema": "../fleet.schema.json",
     "site": {
         "title": "eros.ender.fi",
         "description": "A live map of my servers and the projects running on them."

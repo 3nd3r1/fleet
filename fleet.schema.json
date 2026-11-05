@@ -17,6 +17,11 @@
                 "description": {
                     "default": "A live map of servers and the projects running on them.",
                     "type": "string"
+                },
+                "intro": {
+                    "default": true,
+                    "description": "Play the boot sequence and ship launch on a visitor's first visit.",
+                    "type": "boolean"
                 }
             },
             "additionalProperties": false
