@@ -34,6 +34,10 @@
                     "default": "coolify host",
                     "type": "string"
                 },
+                "beszel": {
+                    "description": "Beszel system name for the host. Defaults to the core name, matched case-insensitively.",
+                    "type": "string"
+                },
                 "description": {
                     "default": "Runs Coolify and every project orbiting it.",
                     "type": "string"
@@ -138,6 +142,10 @@
                     },
                     "description": {
                         "default": "",
+                        "type": "string"
+                    },
+                    "beszel": {
+                        "description": "Beszel system name. Defaults to the machine name, matched case-insensitively.",
                         "type": "string"
                     }
                 },

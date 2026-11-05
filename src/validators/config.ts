@@ -42,6 +42,12 @@ export const machineConfigSchema = z.strictObject({
     name: z.string().min(1).optional(),
     role: z.string().default("machine"),
     description: z.string().default(""),
+    beszel: z
+        .string()
+        .optional()
+        .describe(
+            "Beszel system name. Defaults to the machine name, matched case-insensitively."
+        ),
 });
 
 export const fleetConfigSchema = z.strictObject({
@@ -66,6 +72,12 @@ export const fleetConfigSchema = z.strictObject({
                     "Name of the Coolify host. Defaults to the server name in Coolify."
                 ),
             role: z.string().default("coolify host"),
+            beszel: z
+                .string()
+                .optional()
+                .describe(
+                    "Beszel system name for the host. Defaults to the core name, matched case-insensitively."
+                ),
             description: z
                 .string()
                 .default("Runs Coolify and every project orbiting it."),

@@ -15,6 +15,8 @@ export const nodeSchema = z.object({
     ram: z.number().min(0).max(100).nullable(),
     // Public link for the side panel, null for none.
     url: z.url().nullable(),
+    // Seconds since boot, for machines and the core. null when unknown.
+    uptime: z.number().nonnegative().nullable(),
 });
 
 export const siteSchema = z.object({

@@ -2,7 +2,7 @@ import type { Fleet, FleetNode, Status } from "@/validators/fleet";
 
 // Mock data for building the visuals. Never put IPs, ports or versions here.
 
-type Seed = Omit<FleetNode, "status" | "cpu" | "ram"> & {
+type Seed = Omit<FleetNode, "status" | "cpu" | "ram" | "uptime"> & {
     cpu: number;
     ram: number;
 };
@@ -153,6 +153,13 @@ export function createMock(
         );
     }
 
+    // Machines and the core have been up for a while, projects don't report it.
+    const bootedAt = now() - 19 * 86_400_000;
+    const uptime = (seed: Seed, status: Status) =>
+        seed.kind === "project" || status === "down"
+            ? null
+            : Math.round((now() - bootedAt) / 1000);
+
     function snapshot(seed: Seed): FleetNode {
         const s = live.get(seed.id)!;
         return {
@@ -160,6 +167,7 @@ export function createMock(
             status: s.status,
             cpu: round(s.cpu),
             ram: round(s.ram),
+            uptime: uptime(seed, s.status),
         };
     }
 
@@ -179,6 +187,7 @@ export function createMock(
                 status: cpu > 85 ? "degraded" : "up",
                 cpu: round(cpu),
                 ram: round(ram),
+                uptime: uptime(CORE, "up"),
             },
             projects,
             machines: MACHINES.map(snapshot),
