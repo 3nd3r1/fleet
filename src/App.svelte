@@ -10,7 +10,10 @@
     import Roster from "@/components/Roster.svelte";
     import Starfield from "@/components/Starfield.svelte";
 
-    const fleet = createFleet(import.meta.env.VITE_FLEET_SOURCE ?? "mock");
+    const fleet = createFleet(
+        import.meta.env.VITE_FLEET_SOURCE ??
+            (import.meta.env.PROD ? "api" : "mock")
+    );
 
     let hoveredId = $state<string | null>(null);
     let selectedId = $state<string | null>(null);
