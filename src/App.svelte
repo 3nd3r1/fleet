@@ -2,8 +2,14 @@
     import { onMount } from "svelte";
 
     import { createFleet } from "@/lib/fleet.svelte";
+    import {
+        type IntroPhase,
+        markIntroSeen,
+        shouldPlayIntro,
+    } from "@/lib/intro";
     import { allNodes, countStatuses } from "@/lib/nodes";
 
+    import Boot from "@/components/Boot.svelte";
     import EventLog from "@/components/EventLog.svelte";
     import FleetMap from "@/components/FleetMap.svelte";
     import NodePanel from "@/components/NodePanel.svelte";
@@ -14,6 +20,21 @@
         import.meta.env.VITE_FLEET_SOURCE ??
             (import.meta.env.PROD ? "api" : "mock")
     );
+
+    const storage = (() => {
+        try {
+            return window.localStorage;
+        } catch {
+            return null;
+        }
+    })();
+    const playIntro = shouldPlayIntro({
+        storage,
+        search: location.search,
+        reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    });
+    let intro = $state<IntroPhase>(playIntro ? "hold" : "off");
+    let booting = $state(playIntro);
 
     let hoveredId = $state<string | null>(null);
     let selectedId = $state<string | null>(null);
@@ -60,6 +81,18 @@
 
 <Starfield />
 
+{#if booting}
+    <Boot
+        fleet={data}
+        lost={fleet.lost}
+        onleave={() => (intro = "launch")}
+        ondone={() => {
+            booting = false;
+            markIntroSeen(storage);
+        }}
+    />
+{/if}
+
 <div
     class="grid min-h-dvh lg:h-dvh lg:grid-cols-[1fr_20rem] lg:overflow-hidden"
 >
@@ -94,7 +127,13 @@
             <div
                 class="aspect-square w-full lg:aspect-auto lg:min-h-0 lg:flex-1"
             >
-                <FleetMap fleet={data} {activeId} {onhover} {onselect} />
+                <FleetMap
+                    fleet={data}
+                    {activeId}
+                    {onhover}
+                    {onselect}
+                    {intro}
+                />
             </div>
             <div class="absolute bottom-6 left-6 max-lg:hidden">
                 <EventLog events={fleet.events} />

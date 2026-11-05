@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { onMount } from "svelte";
+    import { onMount, untrack } from "svelte";
 
     import type { Fleet } from "@/validators/fleet";
 
@@ -15,6 +15,7 @@
         polar,
         speedFactor,
     } from "@/lib/geometry";
+    import { type IntroPhase, launchProgress } from "@/lib/intro";
     import { isActive, statusColor } from "@/lib/nodes";
 
     interface Props {
@@ -22,9 +23,11 @@
         activeId: string;
         onhover: (id: string | null) => void;
         onselect: (id: string | null) => void;
+        // "hold": ships wait at the core, "launch": they fly out, "off": no intro.
+        intro?: IntroPhase;
     }
 
-    let { fleet, activeId, onhover, onselect }: Props = $props();
+    let { fleet, activeId, onhover, onselect, intro = "off" }: Props = $props();
 
     const VIEW = 520;
     const SCALE_RADIUS = OUTPOST_RADIUS + 42;
@@ -64,17 +67,34 @@
         return () => cancelAnimationFrame(frame);
     });
 
+    let launchedAt = $state<number | null>(null);
+    $effect(() => {
+        if (intro === "launch" && launchedAt === null) {
+            launchedAt = untrack(() => t);
+        }
+    });
+
     const ships = $derived(
         fleet.projects.map((node, i) => {
             const orbit = layoutOrbit(i, fleet.projects.length);
             const angle = angles[node.id] ?? orbit.phase;
+            const p =
+                intro === "off"
+                    ? 1
+                    : launchedAt === null
+                      ? 0
+                      : launchProgress(t - launchedAt, i);
+            // Ships leave the core pointing outward, then turn onto the orbit.
+            const heading = (angle * 180) / Math.PI + 90 * p;
             return {
                 node,
-                ...polar(orbit.radius, angle),
-                heading: (angle * 180) / Math.PI + 90,
+                ...polar(CORE_RADIUS + (orbit.radius - CORE_RADIUS) * p, angle),
+                heading,
+                opacity: Math.min(1, p * 3),
             };
         })
     );
+    const hidden = $derived(intro === "hold" ? 0 : 1);
 
     const outposts = $derived(
         fleet.machines.map((node, i) => {
@@ -130,7 +150,12 @@
     class="size-full select-none"
     onclick={() => onselect(null)}
 >
-    <g fill="none" stroke="var(--color-faint)">
+    <g
+        fill="none"
+        stroke="var(--color-faint)"
+        class="fade"
+        style:opacity={hidden}
+    >
         {#each ORBIT_RADII as r (r)}
             <circle {r} stroke-dasharray="2 6" />
         {/each}
@@ -151,22 +176,25 @@
             y={b.y}
             text-anchor="middle"
             dominant-baseline="middle"
-            class="label bearing">{b.label}</text
+            class="label bearing fade"
+            style:opacity={hidden}>{b.label}</text
         >
     {/each}
 
     {#each outposts as o (o.node.id)}
-        <line
-            x1={o.from.x}
-            y1={o.from.y}
-            x2={o.to.x}
-            y2={o.to.y}
-            stroke="var(--color-faint)"
-            stroke-dasharray="1 5"
-        />
-        {#each o.packets as p, i (i)}
-            <circle cx={p.x} cy={p.y} r="1.8" fill="var(--color-dim)" />
-        {/each}
+        <g class="fade" style:opacity={hidden}>
+            <line
+                x1={o.from.x}
+                y1={o.from.y}
+                x2={o.to.x}
+                y2={o.to.y}
+                stroke="var(--color-faint)"
+                stroke-dasharray="1 5"
+            />
+            {#each o.packets as p, i (i)}
+                <circle cx={p.x} cy={p.y} r="1.8" fill="var(--color-dim)" />
+            {/each}
+        </g>
     {/each}
 
     {#if activeShip}
@@ -233,7 +261,8 @@
             tabindex="0"
             aria-label="{s.node.name}, {s.node.status}"
             transform="translate({s.x} {s.y})"
-            class="node"
+            class={["node", s.opacity === 0 && "pointer-events-none"]}
+            style:opacity={s.opacity}
             {...handlers(s.node.id)}
         >
             <circle r="22" fill="transparent" class="glyph" />
@@ -268,7 +297,8 @@
             tabindex="0"
             aria-label="{o.node.name}, {o.node.status}"
             transform="translate({o.x} {o.y})"
-            class="node"
+            class={["node", "fade", hidden === 0 && "pointer-events-none"]}
+            style:opacity={hidden}
             {...handlers(o.node.id)}
         >
             <g class="glyph">
@@ -311,6 +341,9 @@
     .node {
         cursor: pointer;
         outline: none;
+    }
+    .fade {
+        transition: opacity 700ms ease-out;
     }
     .label {
         fill: var(--color-dim);
