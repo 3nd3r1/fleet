@@ -1,0 +1,17 @@
+# fleet with Docker Compose. Put your secrets in a .env file next to this one.
+services:
+  fleet:
+    image: ghcr.io/3nd3r1/fleet:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      COOLIFY_URL: ${COOLIFY_URL}
+      COOLIFY_TOKEN: ${COOLIFY_TOKEN}
+      # Optional, for CPU, RAM and machine status:
+      BESZEL_URL: ${BESZEL_URL:-}
+      BESZEL_EMAIL: ${BESZEL_EMAIL:-}
+      BESZEL_PASSWORD: ${BESZEL_PASSWORD:-}
+    volumes:
+      # Optional config, see docs/configuration.md
+      - ./fleet.config.json:/app/fleet.config.json:ro

@@ -1,0 +1,21 @@
+# documentation: https://github.com/3nd3r1/fleet
+# slogan: A live map of your Coolify server and the projects running on it.
+# tags: dashboard, status, monitoring, map, beszel
+# port: 3000
+
+services:
+  fleet:
+    image: ghcr.io/3nd3r1/fleet:latest
+    environment:
+      - SERVICE_FQDN_FLEET_3000
+      - COOLIFY_URL=${COOLIFY_URL}
+      - COOLIFY_TOKEN=${COOLIFY_TOKEN}
+      - BESZEL_URL=${BESZEL_URL}
+      - BESZEL_EMAIL=${BESZEL_EMAIL}
+      - BESZEL_PASSWORD=${BESZEL_PASSWORD}
+      - FLEET_CONFIG_JSON=${FLEET_CONFIG_JSON}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
