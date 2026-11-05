@@ -28,3 +28,23 @@ jobs:
 
       - name: Run tests with coverage
         run: bun run coverage
+
+  docker:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Build the image
+        run: docker build -t fleet .
+
+      - name: Start it and check it answers
+        run: |
+          docker run -d --name fleet -p 3000:3000 fleet
+          for i in $(seq 1 20); do
+            curl -sf http://localhost:3000/api/ping && exit 0
+            sleep 1
+          done
+          docker logs fleet
+          exit 1
