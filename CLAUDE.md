@@ -5,8 +5,8 @@ servers and the projects running on them.
 
 ## Status
 
-Tooling is set up with a placeholder page. No visuals yet.
-Repo: github.com/3nd3r1/fleet (private).
+The first version of the map runs on mock data. Not deployed yet, and there's
+no real data source yet. Repo: github.com/3nd3r1/fleet (private).
 
 Decided so far:
 
@@ -15,19 +15,53 @@ Decided so far:
   (`server/index.ts`) in the same container serves `dist/` and `/api/*`, and
   will later proxy Coolify/Beszel. TypeScript is pinned to 6.x because
   typescript-eslint doesn't support 7 yet.
+- Coolify is not its own node. It's what runs eros, and eros's role says so.
 
-Still open. Ask me about these before building anything:
+Still open:
 
-1. Which projects are still running on eros (list below may be outdated), and
-   whether Coolify itself should be a node.
-2. Visual direction. Options I've been given: tactical display (dark, glowing
-   lines, mono font, Ender command-screen feel), clean minimal (Linear/Vercel
-   feel), or space/orbital (eros as a planet, projects orbiting it).
-3. How the non-eros machines show up: a dimmer outer ring, or linked to eros
-   (e.g. bean deploys to eros).
-4. Colors and fonts. Propose these after the visual direction is picked.
+- Which projects really run on eros. The mock uses the list below. Repos with
+  Coolify webhooks also include vebbi-homepage, timescaledb-tune-ui, viiteri,
+  neko-homepage and mantray-homepage. Once real data comes from Coolify, this
+  sorts itself out.
 
-Don't pick colors or fonts yourself. Propose options and ask.
+## Design
+
+The look is space, Ender's Game themed, kept simple: a flat 2D tactical map,
+like the command screen on Eros. No 3D, no glow gradients, no glassmorphism,
+no decorative filler. Motion and changing numbers are what make it feel alive.
+
+- eros: the asteroid itself, a peanut outline turning slowly at the center,
+  with range rings and bearing ticks around it.
+- Projects: ship chevrons on two orbits. Up ships orbit at full speed,
+  degraded ones slow down, down ones stop and blink.
+- Machines: square outposts at the edge, linked to eros by dashed lines with
+  dots moving along them. A machine that's down is shown as "offline" in dim
+  gray, not red, because it's just switched off.
+- Hover, focus or tap a node: target brackets, a dotted line from eros to the
+  ship, and the side panel shows role, status, CPU/RAM bars and a 2 min CPU
+  sparkline. Nothing hovered or selected → eros. Escape clears the selection.
+- Event log of status changes, plus a roster of every node (on a phone this
+  is the main way to pick a node).
+- Phone: header, square map, then panel, log and roster stacked. Ship labels
+  only show for the active ship, and glyphs are scaled up.
+- Respects `prefers-reduced-motion` (no orbiting, twinkling or blinking).
+
+Colors (Tailwind theme in `src/app.css`, dark only):
+
+| token      | value     | use                             |
+| ---------- | --------- | ------------------------------- |
+| `space`    | `#05070c` | background                      |
+| `ink`      | `#cfd7e3` | text, eros, active things       |
+| `dim`      | `#6d7b91` | labels, secondary text, offline |
+| `faint`    | `#1e2735` | rings, links, borders           |
+| `up`       | `#5fd0a2` | status                          |
+| `degraded` | `#e6b04b` | status                          |
+| `down`     | `#ee5f5a` | status                          |
+
+Color only means status. Everything else is ink, dim or faint.
+
+Font: IBM Plex Mono (400, 500), self-hosted via `@fontsource`, used for
+everything. Small uppercase labels with wide letter spacing.
 
 ## Commands
 
@@ -51,16 +85,25 @@ bun run docker:build # Build the image
 
 ```
 src/
-├── App.svelte       # Root component
-├── main.ts          # Mounts App
-├── app.css          # Tailwind entry
-├── components/      # Svelte components
-├── lib/             # config.ts (site details), data loading, utils
-└── validators/      # Zod schemas
-server/index.ts      # Bun server: /api/* + static dist/
-tests/               # Mirrors src/ and server/
-public/              # Favicons, copied as-is into dist/
+├── App.svelte             # Layout, hover/selection state
+├── main.ts                # Mounts App, loads fonts
+├── app.css                # Tailwind entry, theme tokens, keyframes
+├── components/            # FleetMap, NodePanel, Roster, EventLog, Sparkline, Starfield
+├── lib/
+│   ├── config.ts          # Site details
+│   ├── fleet.svelte.ts    # The one place data is loaded (mock or /api/fleet)
+│   ├── mock.ts            # Mock fleet that changes over time
+│   ├── events.ts          # Status-change diffing for the log
+│   ├── geometry.ts        # Orbits, outposts, asteroid and bracket paths
+│   └── nodes.ts           # allNodes, status labels/colors, counts
+└── validators/            # Zod schemas (fleet.ts is the data contract)
+server/index.ts            # Bun server: /api/* + static dist/
+tests/                     # Mirrors src/ and server/
+public/                    # Favicons, copied as-is into dist/
 ```
+
+Switching to real data: add `/api/fleet` to the server returning the
+`fleetSchema` shape, and build with `VITE_FLEET_SOURCE=api`.
 
 ## Machines (named after Ender's Game)
 
