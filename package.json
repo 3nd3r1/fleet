@@ -17,7 +17,8 @@
         "coverage": "vitest run --coverage",
         "type-check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
         "docker:build": "docker build -t fleet .",
-        "docker:run": "docker run --rm -p 3000:3000 fleet"
+        "docker:run": "docker run --rm -p 3000:3000 fleet",
+        "schema": "bun scripts/schema.ts && prettier --write fleet.schema.json"
     },
     "dependencies": {
         "zod": "^4.6.7"

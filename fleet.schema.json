@@ -1,0 +1,150 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "$schema": {
+            "type": "string"
+        },
+        "site": {
+            "default": {},
+            "type": "object",
+            "properties": {
+                "title": {
+                    "default": "fleet",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "description": {
+                    "default": "A live map of servers and the projects running on them.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "core": {
+            "default": {},
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Name of the Coolify host. Defaults to the server name in Coolify.",
+                    "type": "string",
+                    "minLength": 1
+                },
+                "role": {
+                    "default": "coolify host",
+                    "type": "string"
+                },
+                "description": {
+                    "default": "Runs Coolify and every project orbiting it.",
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "grouping": {
+            "default": {},
+            "type": "object",
+            "properties": {
+                "suffixes": {
+                    "default": [
+                        "frontend",
+                        "backend",
+                        "page",
+                        "ui",
+                        "database",
+                        "db",
+                        "api",
+                        "web"
+                    ],
+                    "description": "Name endings stripped to group resources: \"blog-frontend\" and \"blog-backend\" become \"blog\".",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    }
+                },
+                "aliases": {
+                    "default": {},
+                    "description": "Map a Coolify resource name to a project id.",
+                    "type": "object",
+                    "propertyNames": {
+                        "type": "string"
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            },
+            "additionalProperties": false
+        },
+        "projects": {
+            "default": {},
+            "description": "Per-project settings, keyed by grouped project id.",
+            "type": "object",
+            "propertyNames": {
+                "type": "string"
+            },
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "description": "Display name. Defaults to the grouped Coolify name.",
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "description": {
+                        "description": "One line for the side panel. Overrides the Coolify description.",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "Link for the side panel, or false for no link. Defaults to the project's public Coolify domain.",
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "format": "uri"
+                            },
+                            {
+                                "type": "boolean",
+                                "const": false
+                            }
+                        ]
+                    },
+                    "hidden": {
+                        "description": "Leave this project off the page.",
+                        "type": "boolean"
+                    }
+                },
+                "additionalProperties": false
+            }
+        },
+        "machines": {
+            "default": [],
+            "description": "Machines outside Coolify, shown at the edge of the map.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "pattern": "^[a-z0-9-]+$"
+                    },
+                    "name": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "role": {
+                        "default": "machine",
+                        "type": "string"
+                    },
+                    "description": {
+                        "default": "",
+                        "type": "string"
+                    }
+                },
+                "required": ["id"],
+                "additionalProperties": false
+            }
+        }
+    },
+    "additionalProperties": false
+}
