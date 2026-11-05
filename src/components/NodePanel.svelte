@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { FleetNode } from "@/validators/fleet";
 
-    import { statusColor, statusLabel } from "@/lib/nodes";
+    import { formatPercent, statusColor, statusLabel } from "@/lib/nodes";
 
     import Sparkline from "@/components/Sparkline.svelte";
 
@@ -13,6 +13,7 @@
     let { node, history }: Props = $props();
 
     const down = $derived(node.status === "down");
+    const hasMetrics = $derived(node.cpu !== null || node.ram !== null);
     const metrics = $derived([
         { label: "cpu", value: node.cpu },
         { label: "ram", value: node.ram },
@@ -46,13 +47,13 @@
                         {m.label}
                     </dt>
                     <dd class="tabular-nums">
-                        {down ? "—" : `${m.value.toFixed(1)}%`}
+                        {formatPercent(m.value, 1)}
                     </dd>
                 </div>
                 <div class="mt-1.5 h-px bg-faint">
                     <div
                         class="h-px transition-[width] duration-700"
-                        style:width="{m.value}%"
+                        style:width="{m.value ?? 0}%"
                         style:background-color={statusColor(node)}
                     ></div>
                 </div>
@@ -61,7 +62,11 @@
     </dl>
 
     <div class="mt-6 text-dim">
-        <p class="text-xs tracking-[0.2em] uppercase">cpu · last 2 min</p>
-        <div class="mt-2"><Sparkline values={history} /></div>
+        {#if hasMetrics && history.length > 1}
+            <p class="text-xs tracking-[0.2em] uppercase">cpu · recent</p>
+            <div class="mt-2"><Sparkline values={history} /></div>
+        {:else}
+            <p class="text-xs tracking-[0.2em] uppercase">no metrics yet</p>
+        {/if}
     </div>
 </section>

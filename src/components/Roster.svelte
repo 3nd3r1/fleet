@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { Fleet, FleetNode } from "@/validators/fleet";
 
-    import { statusColor } from "@/lib/nodes";
+    import { formatPercent, statusColor } from "@/lib/nodes";
 
     interface Props {
         fleet: Fleet;
@@ -47,9 +47,7 @@
                             ></span>
                             <span class="flex-1 truncate">{node.name}</span>
                             <span class="text-xs tabular-nums">
-                                {node.status === "down"
-                                    ? "—"
-                                    : `${Math.round(node.cpu)}%`}
+                                {formatPercent(node.cpu)}
                             </span>
                         </button>
                     </li>

@@ -4,8 +4,8 @@ import { type FleetEvent, statusChanges } from "@/lib/events";
 import { createMock } from "@/lib/mock";
 import { allNodes } from "@/lib/nodes";
 
-// All fleet data loading goes through here. Switching from mock to the real
-// backend is VITE_FLEET_SOURCE=api plus a /api/fleet route on the server.
+// All fleet data loading goes through here. Production builds read the real
+// backend (/api/fleet), dev uses mock data. VITE_FLEET_SOURCE overrides both.
 
 export type FleetSource = "mock" | "api";
 
@@ -39,6 +39,7 @@ export function createFleet(source: FleetSource = "mock") {
             }
         }
         for (const node of allNodes(next)) {
+            if (node.cpu === null) continue;
             history[node.id] = [...(history[node.id] ?? []), node.cpu].slice(
                 -HISTORY
             );

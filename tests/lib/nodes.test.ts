@@ -26,3 +26,11 @@ describe("countStatuses", () => {
         );
     });
 });
+
+describe("unknown status", () => {
+    it("reads as no signal in a dim color", () => {
+        const node = { kind: "machine", status: "unknown" } as const;
+        expect(statusLabel(node)).toBe("no signal");
+        expect(statusColor(node)).toBe("var(--color-dim)");
+    });
+});

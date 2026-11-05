@@ -2,7 +2,10 @@ import type { Fleet, FleetNode, Status } from "@/validators/fleet";
 
 // Mock data for building the visuals. Never put IPs, ports or versions here.
 
-type Seed = Omit<FleetNode, "status">;
+type Seed = Omit<FleetNode, "status" | "cpu" | "ram"> & {
+    cpu: number;
+    ram: number;
+};
 
 const CORE: Seed = {
     id: "eros",
@@ -73,7 +76,7 @@ const MACHINES: Seed[] = [
 ];
 
 interface Live {
-    status: Status;
+    status: Exclude<Status, "unknown">;
     cpu: number;
     ram: number;
     // Ticks left until an incident (or an offline stretch) ends.
@@ -160,7 +163,7 @@ export function createMock(
         [...PROJECTS, ...MACHINES].forEach(step);
         const projects = PROJECTS.map(snapshot);
         const sum = (key: "cpu" | "ram") =>
-            projects.reduce((total, p) => total + p[key], 0);
+            projects.reduce((total, p) => total + (p[key] ?? 0), 0);
         const cpu = clamp(5 + sum("cpu") * 0.4 + (rng() - 0.5) * 3, 1, 99);
         const ram = clamp(28 + sum("ram") * 0.25, 1, 99);
 

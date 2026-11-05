@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const statusSchema = z.enum(["up", "degraded", "down"]);
+// "unknown" means there is no data source for the node yet.
+export const statusSchema = z.enum(["up", "degraded", "down", "unknown"]);
 
 export const nodeSchema = z.object({
     id: z.string().min(1),
@@ -9,8 +10,9 @@ export const nodeSchema = z.object({
     role: z.string(),
     description: z.string(),
     status: statusSchema,
-    cpu: z.number().min(0).max(100),
-    ram: z.number().min(0).max(100),
+    // null when there are no metrics for this node yet.
+    cpu: z.number().min(0).max(100).nullable(),
+    ram: z.number().min(0).max(100).nullable(),
 });
 
 export const fleetSchema = z.object({

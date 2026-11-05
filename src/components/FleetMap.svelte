@@ -15,7 +15,7 @@
         polar,
         speedFactor,
     } from "@/lib/geometry";
-    import { statusColor } from "@/lib/nodes";
+    import { isActive, statusColor } from "@/lib/nodes";
 
     interface Props {
         fleet: Fleet;
@@ -90,13 +90,12 @@
                 ...polar(OUTPOST_RADIUS, angle),
                 from,
                 to,
-                packets:
-                    node.status === "down"
-                        ? []
-                        : [
-                              along(packet(t, 6 + i, i * 0.37)),
-                              along(1 - packet(t, 9 + i * 1.5, i * 0.61)),
-                          ],
+                packets: !isActive(node)
+                    ? []
+                    : [
+                          along(packet(t, 6 + i, i * 0.37)),
+                          along(1 - packet(t, 9 + i * 1.5, i * 0.61)),
+                      ],
             };
         })
     );
