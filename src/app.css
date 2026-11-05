@@ -1,3 +1,51 @@
 @import "tailwindcss";
 
-/* Colors and fonts are still open (see CLAUDE.md). */
+@theme {
+    --color-space: #05070c;
+    --color-ink: #cfd7e3;
+    --color-dim: #6d7b91;
+    --color-faint: #1e2735;
+    --color-up: #5fd0a2;
+    --color-degraded: #e6b04b;
+    --color-down: #ee5f5a;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+    background: var(--color-space);
+    color: var(--color-ink);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    color-scheme: dark;
+}
+
+::selection {
+    background: var(--color-faint);
+}
+
+@keyframes twinkle {
+    50% {
+        opacity: 0.05;
+    }
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.2;
+    }
+}
+
+.twinkle {
+    animation: twinkle 6s ease-in-out infinite;
+}
+
+.blink {
+    animation: blink 1.2s steps(2, jump-none) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .twinkle,
+    .blink {
+        animation: none;
+    }
+}
