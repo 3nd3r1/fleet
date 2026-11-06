@@ -10,7 +10,10 @@
         "description": "Runs Coolify and every project orbiting it, this page included."
     },
     "projects": {
-        "fleet": { "description": "This page.", "url": false },
+        "fleet": {
+            "description": "This page.",
+            "url": "https://github.com/3nd3r1/fleet"
+        },
         "bloglist": {
             "description": "A simple blog app from the Fullstack-HY 2023 course."
         },
