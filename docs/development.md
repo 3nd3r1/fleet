@@ -52,6 +52,7 @@ server/
 ├── config.ts              finds and validates the config
 ├── coolify.ts             Coolify client
 ├── beszel.ts              Beszel client
+├── heartbeat.ts           POST /api/heartbeat, status for machines without Beszel
 ├── fleet.ts               grouping, statuses, links, metrics, cache
 └── doctor.ts              the doctor command
 deploy/                    config for my own instance

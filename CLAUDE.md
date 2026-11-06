@@ -31,12 +31,11 @@ Still open:
 
 - Beszel agents on dragon and graff (bean is done). Until they're added in the
   hub, the outposts show "no signal".
-- jane (phone) has no Beszel agent. Plan: a token-protected
-  `POST /api/heartbeat/<machine>` that a phone automation app (HTTP Shortcuts,
-  Tasker, Termux) calls every few minutes, optionally with battery level. Up
-  while heartbeats arrive, offline when they stop. Alternative if I use
-  Tailscale: online status from the Tailscale API. Termux + Beszel agent was
-  rejected (Android blocks CPU stats, kills background processes).
+- jane (phone) reports through heartbeats (`server/heartbeat.ts`): a phone
+  automation app (MacroDroid) calls `POST /api/heartbeat/jane` every 5 min.
+  Needs `FLEET_HEARTBEAT_TOKEN` on the Coolify app and the MacroDroid macro
+  set up. Termux + Beszel agent was rejected (Android blocks CPU stats, kills
+  background processes).
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
   ragebaitor and vebbi (`deploy/eros.ender.fi.json`).
 - Before the first release: the name (fleet is a common name), a generic
@@ -132,6 +131,7 @@ server/
 ├── config.ts              # FLEET_CONFIG_JSON, FLEET_CONFIG, ./fleet.config.json
 ├── coolify.ts             # Coolify client, whitelists fields
 ├── beszel.ts              # Beszel client (read-only user), whitelists fields
+├── heartbeat.ts           # POST /api/heartbeat/<machine>, in-memory status
 └── fleet.ts               # Grouping, statuses, safe links, cache
 scripts/schema.ts          # Writes fleet.schema.json (bun run schema)
 deploy/eros.ender.fi.json  # My deployment's config
@@ -197,6 +197,11 @@ The mock in `src/lib/mock.ts` uses generic sample names, not mine.
   of the host's total memory.
 - Beszel statuses: up → up, down → down (machines show "offline"),
   paused/pending/missing → unknown ("no signal").
+- Machines with `heartbeat: <seconds>` in the config take their status from
+  `POST /api/heartbeat/<id>` (Bearer `FLEET_HEARTBEAT_TOKEN`, optional
+  battery as JSON body or `?battery=`): up while heartbeats arrive, down
+  ("offline") after the timeout. Kept in memory and applied after the fleet
+  cache, so a restart shows the Beszel status until the next heartbeat.
 - Beszel is optional. If it's not configured or fails, metrics are `null`
   and the page shows "—". It never breaks the Coolify data.
 - Config comes from `FLEET_CONFIG_JSON`, then `FLEET_CONFIG`, then
@@ -208,8 +213,9 @@ The mock in `src/lib/mock.ts` uses generic sample names, not mine.
   `<html>`).
 - Env (server only, never `VITE_`-prefixed): `COOLIFY_URL`, `COOLIFY_TOKEN`
   (read-only token), `BESZEL_URL`, `BESZEL_EMAIL`, `BESZEL_PASSWORD`
-  (read-only hub user). Locally in `.env`, which Bun loads. In production, set
-  them as runtime env vars on the Coolify app (not build variables).
+  (read-only hub user), `FLEET_HEARTBEAT_TOKEN`. Locally in `.env`, which Bun
+  loads. In production, set them as runtime env vars on the Coolify app (not
+  build variables).
 - To run locally against Coolify: `bun run dev:server` and
   `VITE_FLEET_SOURCE=api bun run dev`. Locally `fleet.config.json` is a copy
   of `deploy/eros.ender.fi.json`.

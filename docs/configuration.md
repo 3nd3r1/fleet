@@ -5,17 +5,18 @@ what Coolify and Beszel report.
 
 ## Environment variables
 
-| Variable              | Required | What it is                                                            |
-| --------------------- | -------- | --------------------------------------------------------------------- |
-| `COOLIFY_URL`         | yes      | Your Coolify dashboard, like `https://coolify.example.com`            |
-| `COOLIFY_TOKEN`       | yes      | A Coolify API token with only the `read` permission                   |
-| `BESZEL_URL`          | no       | Your Beszel hub, for metrics                                          |
-| `BESZEL_EMAIL`        | no       | A verified hub user with the read-only role                           |
-| `BESZEL_PASSWORD`     | no       | That user's password                                                  |
-| `FLEET_CONFIG_JSON`   | no       | The config itself, as JSON                                            |
-| `FLEET_CONFIG`        | no       | Path to a config file                                                 |
-| `FLEET_CACHE_SECONDS` | no       | How long Coolify and Beszel answers are reused. Default 20, minimum 5 |
-| `PORT`                | no       | Port to listen on. Default 3000                                       |
+| Variable                | Required | What it is                                                                |
+| ----------------------- | -------- | ------------------------------------------------------------------------- |
+| `COOLIFY_URL`           | yes      | Your Coolify dashboard, like `https://coolify.example.com`                |
+| `COOLIFY_TOKEN`         | yes      | A Coolify API token with only the `read` permission                       |
+| `BESZEL_URL`            | no       | Your Beszel hub, for metrics                                              |
+| `BESZEL_EMAIL`          | no       | A verified hub user with the read-only role                               |
+| `BESZEL_PASSWORD`       | no       | That user's password                                                      |
+| `FLEET_CONFIG_JSON`     | no       | The config itself, as JSON                                                |
+| `FLEET_CONFIG`          | no       | Path to a config file                                                     |
+| `FLEET_HEARTBEAT_TOKEN` | no       | Secret for `POST /api/heartbeat/<machine>`, see [Heartbeats](#heartbeats) |
+| `FLEET_CACHE_SECONDS`   | no       | How long Coolify and Beszel answers are reused. Default 20, minimum 5     |
+| `PORT`                  | no       | Port to listen on. Default 3000                                           |
 
 Set the secrets as runtime variables. On Coolify that means leaving the build
 variable option off. None of them ever reach the browser.
@@ -97,16 +98,46 @@ host.
 Machines outside Coolify, like your laptop. They sit at the edge of the map and
 get their status from Beszel.
 
-| Key           | Default        | What it does                             |
-| ------------- | -------------- | ---------------------------------------- |
-| `id`          | required       | Lowercase letters, numbers and dashes    |
-| `name`        | same as `id`   | Label on the map                         |
-| `role`        | `machine`      | Small text under the name, like `laptop` |
-| `description` | empty          | Side panel text                          |
-| `beszel`      | same as `name` | Beszel system to match                   |
+| Key           | Default        | What it does                                                              |
+| ------------- | -------------- | ------------------------------------------------------------------------- |
+| `id`          | required       | Lowercase letters, numbers and dashes                                     |
+| `name`        | same as `id`   | Label on the map                                                          |
+| `role`        | `machine`      | Small text under the name, like `laptop`                                  |
+| `description` | empty          | Side panel text                                                           |
+| `beszel`      | same as `name` | Beszel system to match                                                    |
+| `heartbeat`   | off            | Seconds without a heartbeat before the machine shows offline. At least 60 |
 
 A machine is up when its Beszel system is up, offline when it's down, and "no
 signal" when Beszel doesn't know it, or the system is paused or pending.
+Machines with `heartbeat` take their status from heartbeats instead.
+
+## Heartbeats
+
+For machines that can't run a Beszel agent, like a phone. The machine calls
+fleet every few minutes, and shows up while the calls arrive and offline once
+they stop.
+
+1. Set `FLEET_HEARTBEAT_TOKEN` to a long random string, like the output of
+   `openssl rand -hex 32`. Keep it a runtime variable.
+2. Add `"heartbeat": 900` to the machine in the config.
+3. Have the machine send this every 5 minutes:
+    ```
+    POST https://your-fleet.example.com/api/heartbeat/<machine id>
+    Authorization: Bearer <token>
+    ```
+    The battery level is optional, as a JSON body `{"battery": 80}` or as
+    `?battery=80` in the URL. It shows in the side panel.
+
+fleet answers `204` when it worked, `401` for a wrong token and `404` for a
+machine without `heartbeat`. Heartbeats are only kept in memory, so after a
+restart the machine shows its Beszel status, or "no signal", until it checks in
+again. Pick a timeout of a few intervals, because phones delay background work
+when idle.
+
+On Android, [MacroDroid](https://www.macrodroid.com/) works well: a Regular
+Interval trigger every 5 minutes and an HTTP Request action, with
+`[battery]` in the body for the battery level. Turn off battery optimization
+for the app.
 
 ## Metrics
 
