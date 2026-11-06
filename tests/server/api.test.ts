@@ -2,6 +2,7 @@
 import {
     createApi,
     renderIndex,
+    securityHeaders,
     withSecurityHeaders,
 } from "../../server/index";
 
@@ -58,6 +59,14 @@ describe("withSecurityHeaders", () => {
         expect(res.headers.get("x-content-type-options")).toBe("nosniff");
         expect(res.headers.get("x-frame-options")).toBe("DENY");
     });
+
+    it("allows a configured icon's origin for images only", () => {
+        const csp = securityHeaders("https://cdn.example.com/me.png")[
+            "Content-Security-Policy"
+        ];
+        expect(csp).toContain("img-src 'self' data: https://cdn.example.com");
+        expect(csp).toContain("default-src 'self';");
+    });
 });
 
 describe("renderIndex", () => {
@@ -86,6 +95,28 @@ describe("renderIndex", () => {
         expect(
             renderIndex(page, { title: "t", description: "d", intro: false })
         ).toContain('data-intro="off"');
+    });
+
+    it("swaps the icons for a configured one", () => {
+        const page = html.replace(
+            "</head>",
+            `<link rel="icon" href="/favicon.ico" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    </head>`
+        );
+        const out = renderIndex(page, {
+            title: "t",
+            description: "d",
+            icon: "https://cdn.example.com/me.png",
+        });
+        expect(out).not.toContain("/favicon.ico");
+        expect(out).not.toContain("/apple-touch-icon.png");
+        expect(out).toContain(
+            '<link rel="icon" href="https://cdn.example.com/me.png" />'
+        );
+        expect(renderIndex(page, { title: "t", description: "d" })).toContain(
+            "/favicon.ico"
+        );
     });
 
     it("escapes html", () => {
