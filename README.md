@@ -42,9 +42,8 @@ There's a Compose file in [`examples/docker-compose.yml`](examples/docker-compos
 
 ## Configure it
 
-Configuration is optional. It sets the page title and favicon, names,
-descriptions and links for projects, which projects to hide, and machines
-outside Coolify:
+Configuration is optional. It sets the page title, names, descriptions and
+links for projects, which projects to hide, and machines outside Coolify:
 
 ```json
 {

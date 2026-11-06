@@ -39,10 +39,8 @@ Still open:
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
   ragebaitor, vebbi and volupta (`deploy/eros.ender.fi.json`).
 - Before the first release: the name (fleet is a common name), making the
-  repo and the GHCR package public, and setting `site.icon` for eros.ender.fi
-  (my emblem was in `public/` until dc8a79e, it needs hosting somewhere).
-  README screenshots are in `docs/screenshots/`. Retake them after visible
-  changes.
+  repo and the GHCR package public. README screenshots are in
+  `docs/screenshots/`. Retake them after visible changes.
 
 ## Design
 
