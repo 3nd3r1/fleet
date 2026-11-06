@@ -180,7 +180,8 @@ export async function runDoctor(
         );
 
         const unmatched = config.machines.filter(
-            (m) => !findSystem(metrics, m.beszel ?? m.name ?? m.id)
+            (m) =>
+                !m.heartbeat && !findSystem(metrics, m.beszel ?? m.name ?? m.id)
         );
         if (unmatched.length) {
             checks.push({
@@ -197,6 +198,24 @@ export async function runDoctor(
             level: measured || !coreSystem ? "ok" : "warn",
             title: `container metrics for ${measured}/${fleet.projects.length} projects`,
         });
+    }
+
+    const beating = config.machines.filter((m) => m.heartbeat).map((m) => m.id);
+    if (beating.length) {
+        checks.push(
+            runtime.heartbeatToken
+                ? {
+                      level: "ok",
+                      title: `heartbeats on for ${list(beating)}`,
+                  }
+                : {
+                      level: "warn",
+                      title: `${list(beating)} use heartbeats, but FLEET_HEARTBEAT_TOKEN is not set`,
+                      details: [
+                          'Set a long random FLEET_HEARTBEAT_TOKEN, or they stay "no signal".',
+                      ],
+                  }
+        );
     }
 
     const unsafe = strings(fleet).filter((text) => !isSafeText(text));
