@@ -49,6 +49,7 @@ uses most options.
 | `title`       | `fleet`                                                   | Page title and the heading in the corner          |
 | `description` | `A live map of servers and the projects running on them.` | The meta description, used in link previews       |
 | `intro`       | `true`                                                    | Play the boot sequence on a visitor's first visit |
+| `icon`        | fleet's asteroid icon                                     | Favicon URL, `https` only. PNG, SVG or ICO        |
 
 ### `core`
 

@@ -14,6 +14,8 @@ First release.
 - Heartbeats for machines without a Beszel agent, like a phone:
   `POST /api/heartbeat/<machine>` with `FLEET_HEARTBEAT_TOKEN`, optionally
   with the battery level
+- `site.icon` to use your own favicon instead of fleet's
+- Strict Content-Security-Policy, and the page can't be framed
 - `bun server/doctor.ts` to check a setup
 - Boot sequence and ship launch on a visitor's first visit
 - Docker image for amd64 and arm64

@@ -7,6 +7,11 @@ machine status come from [Beszel](https://beszel.dev) if you run it.
 
 Mine runs at [eros.ender.fi](https://eros.ender.fi).
 
+<p>
+    <img src="docs/screenshots/desktop.png" alt="The map on a desktop, with a project selected and its CPU and RAM in the side panel" width="74%">
+    <img src="docs/screenshots/phone.png" alt="The same page on a phone" width="24%">
+</p>
+
 ## Run it on Coolify
 
 1. In Coolify, turn on API access in the settings and create an API token under
@@ -37,8 +42,9 @@ There's a Compose file in [`examples/docker-compose.yml`](examples/docker-compos
 
 ## Configure it
 
-Configuration is optional. It sets the page title, names, descriptions and
-links for projects, which projects to hide, and machines outside Coolify:
+Configuration is optional. It sets the page title and favicon, names,
+descriptions and links for projects, which projects to hide, and machines
+outside Coolify:
 
 ```json
 {
@@ -76,6 +82,15 @@ Systems are matched by name, ignoring case, so a Beszel system called "Eros"
 belongs to a core or machine called `eros`. If Beszel is down, the map keeps
 working without numbers.
 
+## Machines without Beszel
+
+A phone can't run a Beszel agent, so it can check in instead. Set
+`FLEET_HEARTBEAT_TOKEN`, add `"heartbeat": 900` to the machine, and have an
+automation app like MacroDroid call `POST /api/heartbeat/<machine>` every 5
+minutes. The machine is up while the calls arrive and offline after 900 seconds
+without one. Setup is in
+[docs/configuration.md](docs/configuration.md#heartbeats).
+
 ## Check your setup
 
 The doctor command reads the config, talks to Coolify and Beszel, and says what
@@ -88,7 +103,8 @@ $ bun server/doctor.ts
 ✓ Coolify: 1 server(s), 27 resources, shown as 18 projects
 · no description: mantray, vebbi
 ✓ eros uses Beszel system "Eros"
-! machines without a Beszel system: jane
+! machines without a Beszel system: graff
+✓ heartbeats on for jane
 ✓ public data has no IPs, ports or versions
 ```
 
@@ -107,6 +123,10 @@ The page is meant to be public, so the backend is strict about what it sends:
   ports, IPs and sslip.io-style hosts are never linked.
 - Coolify and Beszel are asked at most once per cache period (20 seconds by
   default), however many people have the page open.
+- The page is served with a strict Content-Security-Policy and can't be put in
+  a frame on another site.
+- Heartbeats need the token. What they report is public, though: anyone can
+  see when a machine is online and, if you send it, its battery level.
 
 Every project name in Coolify shows up on the page. Hide the ones that
 shouldn't be public with `"hidden": true`.
