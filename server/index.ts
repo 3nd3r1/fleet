@@ -1,6 +1,6 @@
 import type { Fleet, Site } from "../src/validators/fleet";
 
-import { join, normalize } from "node:path";
+import { join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createFleetCache } from "./fleet";
@@ -94,7 +94,7 @@ export function renderIndex(
 async function serveStatic(req: Request, index: string): Promise<Response> {
     const { pathname } = new URL(req.url);
     const path = normalize(join(DIST, decodeURIComponent(pathname)));
-    if (!path.startsWith(DIST))
+    if (path !== DIST && !path.startsWith(DIST + sep))
         return new Response("Not found", { status: 404 });
 
     const file = Bun.file(path);
