@@ -12,6 +12,8 @@ export interface Runtime extends LoadedConfig {
     cacheMs: number;
     coolify: { url: string; token: string } | null;
     fetchBeszel: (() => Promise<BeszelSnapshot>) | null;
+    // Shared secret for POST /api/heartbeat/<machine>. null turns it off.
+    heartbeatToken: string | null;
 }
 
 // Everything the server needs from the environment, read in one place.
@@ -34,6 +36,7 @@ export function readRuntime(env: Env = process.env): Runtime {
             BESZEL_URL && BESZEL_EMAIL && BESZEL_PASSWORD
                 ? createBeszel(BESZEL_URL, BESZEL_EMAIL, BESZEL_PASSWORD)
                 : null,
+        heartbeatToken: env.FLEET_HEARTBEAT_TOKEN?.trim() || null,
     };
 }
 

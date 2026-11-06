@@ -4,11 +4,15 @@ import { join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createFleetCache } from "./fleet";
+import { type Heartbeats, createHeartbeats } from "./heartbeat";
 import { createLoader, readRuntime } from "./runtime";
 
 const DIST = fileURLToPath(new URL("../dist", import.meta.url));
 
-export function createApi(getFleet: (() => Promise<Fleet>) | null) {
+export function createApi(
+    getFleet: (() => Promise<Fleet>) | null,
+    heartbeats: Heartbeats | null = null
+) {
     return async function handleApi(
         req: Request
     ): Promise<Response | undefined> {
@@ -16,6 +20,17 @@ export function createApi(getFleet: (() => Promise<Fleet>) | null) {
         if (!pathname.startsWith("/api/")) return undefined;
 
         if (pathname === "/api/ping") return Response.json({ message: "pong" });
+
+        const heartbeat = pathname.match(/^\/api\/heartbeat\/([a-z0-9-]+)$/);
+        if (heartbeat) {
+            if (!heartbeats) {
+                return Response.json(
+                    { error: "heartbeat not configured" },
+                    { status: 503 }
+                );
+            }
+            return heartbeats.handle(req, heartbeat[1]);
+        }
 
         if (pathname === "/api/fleet") {
             if (!getFleet) {
@@ -25,7 +40,8 @@ export function createApi(getFleet: (() => Promise<Fleet>) | null) {
                 );
             }
             try {
-                return Response.json(await getFleet(), {
+                const fleet = await getFleet();
+                return Response.json(heartbeats?.apply(fleet) ?? fleet, {
                     headers: { "Cache-Control": "no-store" },
                 });
             } catch (error) {
@@ -105,6 +121,12 @@ if (import.meta.main) {
     console.log(`config: ${runtime.source}`);
     if (!runtime.coolify) console.warn("COOLIFY_URL or COOLIFY_TOKEN not set");
     if (!runtime.fetchBeszel) console.warn("Beszel not configured, no metrics");
+    if (
+        runtime.config.machines.some((m) => m.heartbeat) &&
+        !runtime.heartbeatToken
+    ) {
+        console.warn("FLEET_HEARTBEAT_TOKEN not set, heartbeats are off");
+    }
 
     const load = createLoader(runtime);
     const getFleet = load ? createFleetCache(load, runtime.cacheMs) : null;
@@ -114,7 +136,11 @@ if (import.meta.main) {
         ? renderIndex(await indexFile.text(), runtime.config.site)
         : "Build the page first: bun run build";
 
-    const handleApi = createApi(getFleet);
+    const heartbeats = createHeartbeats(
+        runtime.config.machines,
+        runtime.heartbeatToken
+    );
+    const handleApi = createApi(getFleet, heartbeats);
     Bun.serve({
         port: runtime.port,
         fetch: async (req) => (await handleApi(req)) ?? serveStatic(req, index),
