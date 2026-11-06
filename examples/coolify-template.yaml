@@ -13,7 +13,14 @@ services:
       - BESZEL_URL=${BESZEL_URL}
       - BESZEL_EMAIL=${BESZEL_EMAIL}
       - BESZEL_PASSWORD=${BESZEL_PASSWORD}
-      - FLEET_CONFIG_JSON=${FLEET_CONFIG_JSON}
+    volumes:
+      # Shows up under Persistent Storage, where it can be edited in the
+      # dashboard. Restart the service after editing. See docs/configuration.md.
+      - type: bind
+        source: ./fleet.config.json
+        target: /app/fleet.config.json
+        content: |
+          {}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/ping"]
       interval: 30s
