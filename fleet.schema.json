@@ -18,11 +18,6 @@
                     "default": "A live map of servers and the projects running on them.",
                     "type": "string"
                 },
-                "icon": {
-                    "description": "Favicon URL (PNG, SVG or ICO). Defaults to fleet's own icon.",
-                    "type": "string",
-                    "format": "uri"
-                },
                 "intro": {
                     "default": true,
                     "description": "Play the boot sequence and ship launch on a visitor's first visit.",

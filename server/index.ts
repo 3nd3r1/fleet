@@ -62,31 +62,24 @@ export function createApi(
 }
 
 // The page only loads its own scripts, styles and fonts and only talks to its
-// own /api. Inline styles are allowed for Svelte's style: directives. A
-// configured favicon's origin is the one outside image source.
-export function securityHeaders(icon?: string): Record<string, string> {
-    const imgSrc = ["'self'", "data:", ...(icon ? [new URL(icon).origin] : [])];
-    return {
-        "Content-Security-Policy": [
-            "default-src 'self'",
-            "style-src 'self' 'unsafe-inline'",
-            `img-src ${imgSrc.join(" ")}`,
-            "object-src 'none'",
-            "base-uri 'none'",
-            "form-action 'none'",
-            "frame-ancestors 'none'",
-        ].join("; "),
-        "X-Content-Type-Options": "nosniff",
-        "X-Frame-Options": "DENY",
-        "Referrer-Policy": "strict-origin-when-cross-origin",
-    };
-}
+// own /api. Inline styles are allowed for Svelte's style: directives.
+const SECURITY_HEADERS: Record<string, string> = {
+    "Content-Security-Policy": [
+        "default-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors 'none'",
+    ].join("; "),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+};
 
-export function withSecurityHeaders(
-    res: Response,
-    headers = securityHeaders()
-): Response {
-    for (const [name, value] of Object.entries(headers)) {
+export function withSecurityHeaders(res: Response): Response {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
         res.headers.set(name, value);
     }
     return res;
@@ -107,18 +100,9 @@ const escapeHtml = (text: string) =>
 // previews and the browser tab show them before any JavaScript runs.
 export function renderIndex(
     html: string,
-    site: Site & { intro?: boolean; icon?: string }
+    site: Site & { intro?: boolean }
 ): string {
     const intro = site.intro === false ? "off" : "on";
-    if (site.icon) {
-        const href = escapeHtml(site.icon);
-        html = html
-            .replace(/\s*<link\s+rel="(icon|apple-touch-icon)"[^>]*>/g, "")
-            .replace(
-                "</head>",
-                `<link rel="icon" href="${href}" />\n<link rel="apple-touch-icon" href="${href}" />\n</head>`
-            );
-    }
     return html
         .replace(/<html([^>]*)>/, `<html$1 data-intro="${intro}">`)
         .replace(
@@ -181,13 +165,11 @@ if (import.meta.main) {
         runtime.heartbeatToken
     );
     const handleApi = createApi(getFleet, heartbeats);
-    const headers = securityHeaders(runtime.config.site.icon);
     Bun.serve({
         port: runtime.port,
         fetch: async (req) =>
             withSecurityHeaders(
-                (await handleApi(req)) ?? (await serveStatic(req, index)),
-                headers
+                (await handleApi(req)) ?? (await serveStatic(req, index))
             ),
     });
     console.log(`fleet listening on :${runtime.port}`);

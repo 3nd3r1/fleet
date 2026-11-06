@@ -68,12 +68,6 @@ export const fleetConfigSchema = z.strictObject({
                 .default(
                     "A live map of servers and the projects running on them."
                 ),
-            icon: z
-                .url({ protocol: /^https$/ })
-                .optional()
-                .describe(
-                    "Favicon URL (PNG, SVG or ICO). Defaults to fleet's own icon."
-                ),
             intro: z
                 .boolean()
                 .default(true)
