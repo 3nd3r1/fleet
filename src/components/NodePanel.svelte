@@ -65,6 +65,12 @@
                 <dd class="tabular-nums">{formatUptime(node.uptime)}</dd>
             </div>
         {/if}
+        {#if node.battery != null}
+            <div class="flex justify-between text-xs">
+                <dt class="tracking-[0.2em] text-dim uppercase">battery</dt>
+                <dd class="tabular-nums">{formatPercent(node.battery, 0)}</dd>
+            </div>
+        {/if}
         {#each metrics as m (m.label)}
             <div>
                 <div class="flex justify-between text-xs">
