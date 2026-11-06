@@ -61,6 +61,30 @@ export function createApi(
     };
 }
 
+// The page only loads its own scripts, styles and fonts and only talks to its
+// own /api. Inline styles are allowed for Svelte's style: directives.
+const SECURITY_HEADERS: Record<string, string> = {
+    "Content-Security-Policy": [
+        "default-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'none'",
+        "frame-ancestors 'none'",
+    ].join("; "),
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
+export function withSecurityHeaders(res: Response): Response {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        res.headers.set(name, value);
+    }
+    return res;
+}
+
 const ESCAPES: Record<string, string> = {
     "&": "&amp;",
     "<": "&lt;",
@@ -143,7 +167,10 @@ if (import.meta.main) {
     const handleApi = createApi(getFleet, heartbeats);
     Bun.serve({
         port: runtime.port,
-        fetch: async (req) => (await handleApi(req)) ?? serveStatic(req, index),
+        fetch: async (req) =>
+            withSecurityHeaders(
+                (await handleApi(req)) ?? (await serveStatic(req, index))
+            ),
     });
     console.log(`fleet listening on :${runtime.port}`);
 }

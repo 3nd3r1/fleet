@@ -1,5 +1,9 @@
 // @vitest-environment node
-import { createApi, renderIndex } from "../../server/index";
+import {
+    createApi,
+    renderIndex,
+    withSecurityHeaders,
+} from "../../server/index";
 
 import { describe, expect, it } from "vitest";
 
@@ -42,6 +46,17 @@ describe("api", () => {
         const res = await handle(req("/api/fleet"));
         expect(res?.status).toBe(502);
         expect(JSON.stringify(await res?.json())).not.toContain("secret-host");
+    });
+});
+
+describe("withSecurityHeaders", () => {
+    it("adds a strict CSP and anti-framing headers", () => {
+        const res = withSecurityHeaders(new Response("hi"));
+        const csp = res.headers.get("content-security-policy") ?? "";
+        expect(csp).toContain("default-src 'self'");
+        expect(csp).toContain("frame-ancestors 'none'");
+        expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+        expect(res.headers.get("x-frame-options")).toBe("DENY");
     });
 });
 

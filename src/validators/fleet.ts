@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+// The page's CSP blocks eval. Zod checks for it when schemas are created, so
+// turn its eval-based fast path off before any schema here exists.
+z.config({ jitless: true });
+
 // "unknown" means there is no data source for the node yet.
 export const statusSchema = z.enum(["up", "degraded", "down", "unknown"]);
 
