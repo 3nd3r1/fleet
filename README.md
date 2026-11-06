@@ -52,8 +52,10 @@ links for projects, which projects to hide, and machines outside Coolify:
 }
 ```
 
-Mount it at `/app/fleet.config.json`, or paste it into the `FLEET_CONFIG_JSON`
-environment variable, which is easier on Coolify. Every option is in
+Mount it at `/app/fleet.config.json`. On Coolify, add it under the app's
+Persistent Storage as a File Mount with that path, so you can edit it in the
+dashboard, and restart the app after editing. `FLEET_CONFIG_JSON` also works
+if you'd rather use an environment variable. Every option is in
 [docs/configuration.md](docs/configuration.md).
 
 ## Add metrics with Beszel

@@ -29,6 +29,11 @@ The first one found wins:
 3. `fleet.config.json` in the working directory, which is `/app` in the image
 4. defaults
 
+On Coolify, the easiest way to edit the config is a File Mount: open the app,
+go to Persistent Storage, add a File Mount with the destination
+`/app/fleet.config.json` and paste the config into it. Edit it there later and
+restart the app, because the config is read at startup.
+
 A config with a typo or an unknown key stops the server with an error that
 names the field. Add `"$schema": "./fleet.schema.json"` to get autocomplete and
 the same checks in your editor. [`fleet.config.example.json`](../fleet.config.example.json)
