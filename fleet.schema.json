@@ -152,6 +152,12 @@
                     "beszel": {
                         "description": "Beszel system name. Defaults to the machine name, matched case-insensitively.",
                         "type": "string"
+                    },
+                    "heartbeat": {
+                        "description": "Take the status from POST /api/heartbeat/<id> instead: up while heartbeats arrive, offline after this many seconds without one.",
+                        "type": "integer",
+                        "minimum": 60,
+                        "maximum": 9007199254740991
                     }
                 },
                 "required": ["id"],

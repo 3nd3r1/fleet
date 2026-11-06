@@ -17,6 +17,8 @@ export const nodeSchema = z.object({
     url: z.url().nullable(),
     // Seconds since boot, for machines and the core. null when unknown.
     uptime: z.number().nonnegative().nullable(),
+    // Battery percent, sent by machines that report through heartbeats.
+    battery: z.number().min(0).max(100).nullable().optional(),
 });
 
 export const siteSchema = z.object({

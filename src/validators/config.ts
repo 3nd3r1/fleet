@@ -48,6 +48,14 @@ export const machineConfigSchema = z.strictObject({
         .describe(
             "Beszel system name. Defaults to the machine name, matched case-insensitively."
         ),
+    heartbeat: z
+        .number()
+        .int()
+        .min(60)
+        .optional()
+        .describe(
+            "Take the status from POST /api/heartbeat/<id> instead: up while heartbeats arrive, offline after this many seconds without one."
+        ),
 });
 
 export const fleetConfigSchema = z.strictObject({
