@@ -45,7 +45,12 @@
             "role": "laptop",
             "description": "NixOS with Hyprland. Most deploys to eros start here."
         },
-        { "id": "jane", "role": "phone", "description": "Pixel 10." },
+        {
+            "id": "jane",
+            "role": "phone",
+            "description": "Pixel 10.",
+            "heartbeat": 900
+        },
         { "id": "dragon", "role": "desktop", "description": "Desktop." },
         { "id": "graff", "role": "work mac", "description": "Work machine." }
     ]
