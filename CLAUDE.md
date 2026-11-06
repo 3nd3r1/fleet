@@ -37,10 +37,12 @@ Still open:
   set up. Termux + Beszel agent was rejected (Android blocks CPU stats, kills
   background processes).
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
-  ragebaitor and vebbi (`deploy/eros.ender.fi.json`).
-- Before the first release: the name (fleet is a common name), a generic
-  favicon (`public/` has my personal icons), screenshots for the README,
-  making the repo and the GHCR package public.
+  ragebaitor, vebbi and volupta (`deploy/eros.ender.fi.json`).
+- Before the first release: the name (fleet is a common name), making the
+  repo and the GHCR package public, and setting `site.icon` for eros.ender.fi
+  (my emblem was in `public/` until dc8a79e, it needs hosting somewhere).
+  README screenshots are in `docs/screenshots/`. Retake them after visible
+  changes.
 
 ## Design
 
@@ -138,7 +140,7 @@ deploy/eros.ender.fi.json  # My deployment's config
 examples/                  # docker-compose.yml, coolify-template.yaml
 docs/                      # configuration.md (users), development.md
 tests/                     # Mirrors src/ and server/
-public/                    # Favicons, copied as-is into dist/
+public/                    # Generic asteroid favicons, copied as-is into dist/
 ```
 
 ## Machines (named after Ender's Game)
@@ -254,6 +256,8 @@ that changes over time`.
 
 - The page is public. Never show IPs, ports or software versions, not even in
   mock data.
+- Every response gets the security headers in `server/index.ts` (strict CSP,
+  no framing). The CSP blocks eval, which is why Zod runs jitless.
 - The Coolify token and Beszel login must never reach the browser. Only the
   backend talks to Coolify and Beszel.
 - Never read or print `.env`. Test through the running server instead.
