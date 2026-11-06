@@ -16,6 +16,8 @@
     import Roster from "@/components/Roster.svelte";
     import Starfield from "@/components/Starfield.svelte";
 
+    const SOURCE_URL = "https://github.com/3nd3r1/fleet";
+
     const fleet = createFleet(
         import.meta.env.VITE_FLEET_SOURCE ??
             (import.meta.env.PROD ? "api" : "mock")
@@ -106,7 +108,19 @@
                 <h1 class="text-sm tracking-[0.3em] uppercase">
                     {data?.site.title ?? ""}
                 </h1>
-                <p class="mt-1 text-xs text-dim">fleet status</p>
+                <p class="mt-1 text-xs text-dim">
+                    fleet status ·
+                    <a
+                        href={SOURCE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="group inline-flex gap-1 transition-colors hover:text-ink"
+                        ><span
+                            class="underline decoration-faint underline-offset-4 group-hover:decoration-ink"
+                            >source</span
+                        ><span aria-hidden="true">↗</span></a
+                    >
+                </p>
                 {#if counts}
                     <p class="mt-3 flex gap-3 text-xs tabular-nums">
                         <span class="text-up">{counts.up} up</span>
