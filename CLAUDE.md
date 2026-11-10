@@ -7,11 +7,12 @@ servers and the projects running on them.
 
 The map runs on real data: statuses, names and links from Coolify, CPU/RAM/
 uptime from Beszel. Deployed on Coolify as `fleet-frontend` (redeploy is
-manual until the GitHub webhook is added). Repo: github.com/3nd3r1/fleet (private).
+manual until the GitHub webhook is added). Repo: github.com/3nd3r1/fleet (public).
 
 Decided so far:
 
-- Project name `fleet`. Page title is `eros.ender.fi`.
+- Project name `fleet`, kept for release: the image and repo are namespaced
+  under `3nd3r1/`, and there's no npm package. Page title is `eros.ender.fi`.
 - Stack: Svelte 5 + Vite + Tailwind v4 for the page. A Bun server
   (`server/index.ts`) in the same container serves `dist/` and `/api/*`, and
   proxies Coolify (Beszel later). TypeScript is pinned to 6.x because
@@ -38,9 +39,8 @@ Still open:
   background processes).
 - Descriptions for commute-ai, mantray, neko-vesio, propaganda-radar,
   ragebaitor, vebbi and volupta (`deploy/eros.ender.fi.json`).
-- Before the first release: the name (fleet is a common name), making the
-  repo and the GHCR package public. README screenshots are in
-  `docs/screenshots/`. Retake them after visible changes.
+- README screenshots are in `docs/screenshots/`. Retake them after visible
+  changes.
 
 ## Design
 
