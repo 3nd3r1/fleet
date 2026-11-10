@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 - 2026-11-10
+
 First release.
 
 - Live map of a Coolify server: the host in the middle, projects orbiting as
